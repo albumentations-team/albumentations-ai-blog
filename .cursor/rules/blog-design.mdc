@@ -1,0 +1,203 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Albumentations Blog Design Document
+
+::alert{type="info"}
+This document outlines the structure and design decisions for the Albumentations.ai blog.
+::
+
+## Overview
+
+The Albumentations blog serves as the primary channel for:
+- Release announcements
+- Technical tutorials
+- Performance benchmarks
+- Community contributions
+- Development updates
+
+## Directory Structure
+
+::code-group
+  ```bash [Final Structure]
+  albumentations-ai-blog/
+  ├── posts/           # Blog posts organized by year
+  │   ├── 2024/
+  │   │   └── 01-introducing-albumentationsx/
+  │   │       ├── index.md
+  │   │       └── images/
+  │   └── 2025/
+  └── authors/         # Author metadata
+  ```
+
+  ```bash [Post Structure]
+  posts/2024/01-introducing-albumentationsx/
+  ├── index.md         # Main content
+  └── images/          # Post-specific images
+      ├── hero.jpg
+      └── benchmark.png
+  ```
+::
+
+## Content Types
+
+### Blog Posts
+
+::field-group
+  ::field{name="Location" type="string"}
+    `posts/{year}/{slug}/index.md`
+  ::
+  
+  ::field{name="Format" type="string"}
+    Markdown with YAML frontmatter
+  ::
+  
+  ::field{name="Images" type="string"}
+    Stored in `./images/` relative to post
+  ::
+::
+
+### Authors
+
+::code-block{label="authors/vladimir-iglovikov.json" language="json"}
+```json
+{
+  "id": "vladimir-iglovikov",
+  "name": "Vladimir Iglovikov",
+  "bio": "Creator of Albumentations",
+  "avatar": "https://github.com/ternaus.png",
+  "social": {
+    "github": "ternaus",
+    "twitter": "viglovikov",
+    "linkedin": "iglovikov",
+    "instagram": "viglovikov",
+    "kaggle": "iglovikov"
+  },
+  "role": "Maintainer"
+}
+```
+::
+
+## Frontmatter Schema
+
+::code-block{label="Required Fields" language="yaml"}
+```yaml
+---
+title: string          # Post title
+date: YYYY-MM-DD      # Publication date
+author: string        # Author ID from authors/
+---
+```
+::
+
+::code-block{label="Optional Fields" language="yaml"}
+```yaml
+---
+categories: string[]   # Post categories
+tags: string[]        # Post tags
+excerpt: string       # Short description
+image: string         # Hero image path
+featured: boolean     # Feature on homepage
+readTime: number      # Minutes to read
+lastModified: date    # Last update date
+coAuthors: string[]   # Additional author IDs
+series:               # Multi-part series
+  name: string
+  order: number
+seo:                  # SEO metadata
+  description: string
+  keywords: string[]
+redirectFrom: string[] # Legacy URLs
+---
+```
+::
+
+## Taxonomies
+
+### Categories
+- `announcements` - Official news and releases
+- `tutorials` - How-to guides and examples  
+- `performance` - Benchmarks and optimization
+- `community` - Community contributions
+
+### Common Tags
+- `albumentationsx` - AlbumentationsX specific content
+- `agpl` - License related posts
+- `performance` - Performance improvements
+- `transforms` - Transform features
+- `release` - Release announcements
+
+## Writing Guidelines
+
+::list{type="success"}
+- Use clear, descriptive titles
+- Include code examples with syntax highlighting
+- Add benchmarks and performance comparisons
+- Provide visual examples for transforms
+- Link to relevant documentation
+- Credit contributors and sources
+::
+
+## Image Guidelines
+
+::card
+#title
+Image Requirements
+
+#description
+- **Hero Images**: 1200x630px (Open Graph optimal)
+- **In-post Images**: Max 1200px width
+- **File Formats**: WebP preferred, PNG/JPG fallback
+- **Optimization**: Compress all images
+- **Alt Text**: Required for accessibility
+::
+
+## SEO Best Practices
+
+::list{type="primary"}
+- Descriptive URLs using post slugs
+- Meta descriptions under 160 characters
+- Strategic keyword placement
+- Internal linking between related posts
+- Structured data for articles
+::
+
+## Content Workflow
+
+::steps
+### Post Creation
+Create post in a feature branch
+
+### Review Process
+Technical review via pull request
+
+### Publication
+Merge to main branch
+
+### Promotion
+Share on social media and community channels
+::
+
+## Integration with Albumentations.ai
+
+The blog content will be integrated into the main website at `/blog` with:
+
+::list
+- RSS feed generation
+- Search functionality
+- Category/tag filtering
+- Author pages
+- Related posts suggestions
+::
+
+## Future Enhancements
+
+::badge[Planned]
+
+- Newsletter integration
+- Comment system
+- Multi-language support
+- Interactive code examples
+- Video content support

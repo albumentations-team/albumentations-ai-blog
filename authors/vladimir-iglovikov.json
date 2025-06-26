@@ -1,0 +1,14 @@
+{
+  "id": "vladimir-iglovikov",
+  "name": "Vladimir Iglovikov",
+  "bio": "Co-creator of Albumentations",
+  "avatar": "https://github.com/ternaus.png",
+  "social": {
+    "github": "ternaus",
+    "twitter": "viglovikov",
+    "linkedin": "iglovikov",
+    "instagram": "viglovikov",
+    "kaggle": "iglovikov"
+  },
+  "role": "Maintainer"
+} 
