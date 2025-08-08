@@ -13,7 +13,7 @@ tags:
   - classification
   - deep-learning
   - transforms
-excerpt: Learn how to build a binary image classifier using PyTorch and Albumentations, achieving over 90% accuracy on the classic cats vs dogs dataset.
+excerpt: Learn how to build a binary image classifier using PyTorch and Albumentations on the classic cats vs dogs dataset.
 image: ./images/hero.jpg
 featured: true
 readTime: 20
@@ -99,7 +99,7 @@ Classification models learn hierarchical feature representations that transfer w
 
 ## The Role of Data Augmentation
 
-> **✅ Success:** In this tutorial, augmentation helped us achieve 87.3% validation accuracy with approximately 25,000 training images. Without augmentation, the same model typically plateaus at 75-80% validation accuracy while overfitting significantly (reaching 95%+ training accuracy).
+> **✅ Success:** In this tutorial, augmentation helped us achieve 87.9% validation accuracy with approximately 25,000 training images. Without augmentation, the same model typically plateaus at 75-80% validation accuracy while overfitting significantly (reaching 95%+ training accuracy).
 
 Deep learning models need diverse data to generalize well. While collecting more labeled data is ideal, it's often impractical due to cost, scarcity, or expertise requirements.
 
@@ -1481,7 +1481,7 @@ Implement learning rate scheduling, add early stopping, and use mixed precision 
 
 ### Building Image Classifiers
 
-This tutorial shows how to combine PyTorch with Albumentations for image augmentation. The resulting classifier achieves over 90% accuracy on the validation set through proper data preprocessing, augmentation, and training practices.
+This tutorial shows how to combine PyTorch with Albumentations for image augmentation. The resulting classifier achieve around 90% accuracy on the validation set through proper data preprocessing, augmentation, and training practices.
 
 > **ℹ️ Note:** Good image classification results come from both choosing the right model architecture and implementing a data pipeline that can handle real-world variations in your images. Albumentations simplifies this process.
 
