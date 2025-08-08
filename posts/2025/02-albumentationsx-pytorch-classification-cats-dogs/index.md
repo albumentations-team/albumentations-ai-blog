@@ -116,7 +116,6 @@ Data augmentation artificially expands your training data diversity through labe
 ### The Multiplication Effect
 
 **One Image → Thousands of Variations**
-
 Starting with 1 cat image:
 - Add horizontal flip → 2 variations
 - Add 4 rotations (0°, 90°, 180°, 270°) → 8 variations  
@@ -302,7 +301,7 @@ def load_and_validate_images(data_dir: Path) -> Tuple[List[Path], List[str]]:
     
     print("🔍 Validating images...")
     for img_path in tqdm(cat_images + dog_images, desc="Checking images"):
-        img = cv2.imread(str(img_path))
+        img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
         if img is not None:
             valid_images.append(img_path)
             labels.append("Cat" if img_path.parent.name == "Cat" else "Dog")
@@ -778,7 +777,7 @@ def display_image_grid(images_filepaths, predicted_labels=(), cols=5):
     rows = len(images_filepaths) // cols
     _, ax = plt.subplots(nrows=rows, ncols=cols, figsize=(12, 6))
     for i, image_filepath in enumerate(images_filepaths):
-        image = cv2.imread(image_filepath, cv2.IMREAD_COLOR_RGB)
+        image = cv2.imread(image_filepath, cv2.IMREAD_COLOR)
 
         true_label = os.path.normpath(image_filepath).split(os.sep)[-2]
         predicted_label = predicted_labels[i] if predicted_labels else true_label
@@ -802,7 +801,7 @@ class CatsVsDogsInferenceDataset(Dataset):
 
     def __getitem__(self, idx):
         image_filepath = self.images_filepaths[idx]
-        image = cv2.imread(image_filepath)
+        image = cv2.imread(image_filepath, cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         if self.transform is not None:
             image = self.transform(image=image)["image"]
@@ -1008,7 +1007,7 @@ class DataManager:
         
         print("🔍 Validating images...")
         for img_path in tqdm(cat_images + dog_images, desc="Checking images"):
-            img = cv2.imread(str(img_path))
+            img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
             if img is not None:
                 valid_images.append(img_path)
                 labels.append("Cat" if img_path.parent.name == "Cat" else "Dog")
@@ -1060,7 +1059,7 @@ class Visualizer:
         sample_paths = random.sample(image_paths, min(num_samples, len(image_paths)))
         
         for idx, img_path in enumerate(sample_paths):
-            img = cv2.imread(str(img_path))
+            img = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             
             axes[idx].imshow(img)
@@ -1074,7 +1073,7 @@ class Visualizer:
     @staticmethod
     def show_augmented_samples(image_path: Path, transform, num_samples: int = 6):
         """Show original and augmented versions of an image."""
-        img = cv2.imread(str(image_path))
+        img = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
         viz_transform = A.Compose([
@@ -1132,7 +1131,7 @@ class Visualizer:
         axes = axes.ravel()
         
         for i, image_path in enumerate(image_paths):
-            img = cv2.imread(str(image_path))
+            img = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             
             true_label = image_path.parent.name
