@@ -1,7 +1,9 @@
 ---
 title: Building a Cat vs Dog Classifier with PyTorch and Albumentations
-date: 2025-01-15
+date: 2025-08-10
 author: vladimir-iglovikov
+coAuthors:
+  - tanya-karvat
 categories:
   - tutorials
   - performance
@@ -14,7 +16,7 @@ tags:
 excerpt: Learn how to build a binary image classifier using PyTorch and Albumentations, achieving over 90% accuracy on the classic cats vs dogs dataset.
 image: ./images/hero.jpg
 featured: true
-readTime: 15
+readTime: 20
 seo:
   description: Complete tutorial on building a cat vs dog classifier with PyTorch and Albumentations, including data augmentation strategies and best practices.
   keywords:
@@ -28,15 +30,13 @@ seo:
 
 # Building a Cat vs Dog Classifier with PyTorch and Albumentations
 
-> **ℹ️ Info:** This tutorial demonstrates how to build a high-performance binary image classifier using PyTorch and Albumentations, achieving over 90% accuracy on the Microsoft Cats vs Dogs dataset.
-
 ## Overview
 
 Image classification is one of the most fundamental tasks in computer vision, and building an effective classifier requires not just a good model architecture but also proper data preprocessing and augmentation techniques. In this tutorial, we'll walk through creating a binary image classifier that can distinguish between cats and dogs using PyTorch for the deep learning framework and Albumentations for image augmentations.
 
 ### 🚀 Quick Start
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/albumentations-team/albumentations_examples/blob/main/notebooks/pytorch_cats_dogs_classification.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/albumentations-team/albumentations_examples/blob/main/notebooks/pytorch_classification.ipynb)
 
 Run this tutorial interactively in Google Colab - no setup required!
 
@@ -98,8 +98,6 @@ The practical applications of image classification are vast and growing:
 Classification models learn hierarchical feature representations that transfer well to other tasks. The features learned from distinguishing cats and dogs (edges, textures, shapes) can be used for recognizing other animals, objects, or even abstract concepts.
 ## Why Albumentations?
 
-**[Recommended]** Albumentations is a fast and flexible image augmentation library that offers:
-
 - **Performance**: Optimized implementations that are significantly faster than alternatives
 - **Variety**: Over 70 different augmentation techniques  
 - **Flexibility**: Easy integration with PyTorch, TensorFlow, and other frameworks
@@ -107,7 +105,7 @@ Classification models learn hierarchical feature representations that transfer w
 
 ## The Role of Data Augmentation
 
-> **✅ Success:** In this tutorial, augmentation helped us achieve 90.9% accuracy with just 20,000 training images. Without augmentation, the same model typically plateaus at ~75-80% accuracy and overfits.
+> **✅ Success:** In this tutorial, augmentation helped us achieve 87.3% validation accuracy with approximately 25,000 training images. Without augmentation, the same model typically plateaus at 75-80% validation accuracy while overfitting significantly (reaching 95%+ training accuracy).
 
 Deep learning models need diverse data to generalize well. While collecting more labeled data is ideal, it's often impractical due to cost, scarcity, or expertise requirements.
 
@@ -197,28 +195,30 @@ We'll be working with the Microsoft Cats vs Dogs dataset, which contains thousan
 
 Here are some sample images from the dataset showing the variety of cats and dogs:
 
-![Dataset Samples](dataset_samples.png)
+![Dataset Samples](images/dataset_sample.png)
+
 *Figure 1: Random samples from the Cats vs Dogs dataset showing various poses, lighting conditions, and backgrounds*
 ## Setting Up the Environment
 
-First, let's import all the necessary libraries:
+First, let's import all the necessary libraries: 
 
 **Required Imports:**
 ```python
-import copy
-import os
 import random
 import shutil
 from collections import defaultdict
+from dataclasses import dataclass
+from pathlib import Path
+from typing import List, Optional, Tuple
 from urllib.request import urlretrieve
 
 import albumentations as A
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
-import torch.optim
+import torch.nn as nn
 from albumentations.pytorch import ToTensorV2
-from torch import nn
 from torch.backends import cudnn
 from torch.utils.data import DataLoader, Dataset
 from torchvision import models
@@ -235,15 +235,12 @@ One of the important aspects of any machine learning project is proper data hand
 
 We create utility functions to download and extract the dataset:
 
-**Improved Download Utilities with pathlib:**
+**Download Utilities:**
 
 <details>
 <summary>Click to expand download utility functions</summary>
 
 ```python
-from pathlib import Path
-from typing import Optional
-
 class TqdmUpTo(tqdm):
     """Progress bar for downloads."""
     def update_to(self, b: int = 1, bsize: int = 1, tsize: Optional[int] = None) -> None:
@@ -251,80 +248,72 @@ class TqdmUpTo(tqdm):
             self.total = tsize
         self.update(b * bsize - self.n)
 
-def download_url(url: str, filepath: Path) -> None:
-    """Download file with progress bar."""
-    filepath.parent.mkdir(parents=True, exist_ok=True)
+def download_and_extract(url: str, data_dir: Path) -> Path:
+    """Download and extract the dataset."""
+    data_dir.mkdir(parents=True, exist_ok=True)
+    filepath = data_dir / "kagglecatsanddogs_5340.zip"
     
-    if filepath.exists():
-        print(f"File already exists at {filepath}. Skipping download.")
-        return
-
-    with TqdmUpTo(unit="B", unit_scale=True, unit_divisor=1024, miniters=1, 
-                  desc=filepath.name) as t:
-        urlretrieve(url, filename=str(filepath), reporthook=t.update_to)
-        t.total = t.n
-
-def extract_archive(filepath: Path) -> Path:
-    """Extract zip archive."""
-    extract_dir = filepath.parent
-    shutil.unpack_archive(str(filepath), str(extract_dir))
-    return extract_dir / "PetImages"
+    if not filepath.exists():
+        print(f"📥 Downloading dataset to {filepath}")
+        with TqdmUpTo(unit="B", unit_scale=True, unit_divisor=1024, miniters=1,
+                      desc=filepath.name) as t:
+            urlretrieve(url, filename=filepath, reporthook=t.update_to)
+            t.total = t.n
+    else:
+        print("✅ Dataset already downloaded.")
+    
+    extract_dir = data_dir / "PetImages"
+    if not extract_dir.exists():
+        print("📦 Extracting dataset...")
+        shutil.unpack_archive(filepath, data_dir)
+    
+    return extract_dir
 ```
 
 </details>
 
 **Download and Extract Dataset:**
 ```python
-# Set the root directory using pathlib
-dataset_directory = Path.home() / "datasets" / "cats-vs-dogs"
-dataset_directory.mkdir(parents=True, exist_ok=True)
+# Configuration
+data_dir = Path.home() / "datasets" / "cats-vs-dogs"
 
 # Download the dataset
 dataset_url = "https://download.microsoft.com/download/3/e/1/3e1c3f21-ecdb-4869-8368-6deba77b919f/kagglecatsanddogs_5340.zip"
-zip_path = dataset_directory / "kagglecatsanddogs_5340.zip"
 
-download_url(dataset_url, zip_path)
-data_dir = extract_archive(zip_path)
-print(f"Dataset extracted to: {data_dir}")
+# Download and extract
+extract_dir = download_and_extract(dataset_url, data_dir)
+print(f"Dataset extracted to: {extract_dir}")
 ```
 
 ### 2. Data Quality Control
 
 > **ℹ️ Info:** Not all images in the dataset are valid. We implement a quality check using OpenCV to ensure training stability.
 
-**Image Validation with pathlib:**
+**Image Validation:**
 
 <details>
 <summary>Click to expand image validation function</summary>
 
 ```python
-from pathlib import Path
-from typing import List, Tuple
-
-def validate_images(data_dir: Path) -> Tuple[List[Path], List[str]]:
-    """Validate and return valid image paths with labels."""
+def load_and_validate_images(data_dir: Path) -> Tuple[List[Path], List[str]]:
+    """Load image paths and validate them."""
     cat_dir = data_dir / "Cat"
     dog_dir = data_dir / "Dog"
+    
+    cat_images = list(cat_dir.glob("*.jpg"))
+    dog_images = list(dog_dir.glob("*.jpg"))
     
     valid_images = []
     labels = []
     
-    # Process cat images
-    for img_path in cat_dir.glob("*.jpg"):
-        if cv2.imread(str(img_path)) is not None:
+    print("🔍 Validating images...")
+    for img_path in tqdm(cat_images + dog_images, desc="Checking images"):
+        img = cv2.imread(str(img_path))
+        if img is not None:
             valid_images.append(img_path)
-            labels.append("Cat")
+            labels.append("Cat" if img_path.parent.name == "Cat" else "Dog")
     
-    # Process dog images  
-    for img_path in dog_dir.glob("*.jpg"):
-        if cv2.imread(str(img_path)) is not None:
-            valid_images.append(img_path)
-            labels.append("Dog")
-    
-    print(f"Found {len(valid_images)} valid images")
-    print(f"  - Cats: {labels.count('Cat')}")
-    print(f"  - Dogs: {labels.count('Dog')}")
-    
+    print(f"✅ Found {len(valid_images)} valid images out of {len(cat_images) + len(dog_images)} total")
     return valid_images, labels
 ```
 
@@ -332,16 +321,12 @@ def validate_images(data_dir: Path) -> Tuple[List[Path], List[str]]:
 
 ```python
 # Validate images
-image_paths, labels = validate_images(data_dir)
+image_paths, labels = load_and_validate_images(extract_dir)
 ```
 
 ### 3. Strategic Data Splitting
 
-We split our data into three sets:
-
-- **Training Set**: 20,000 images for model learning
-- **Validation Set**: 4,936 images for hyperparameter tuning
-- **Test Set**: 10 images for final evaluation
+We split our data into three sets using a flexible splitting function:
 
 **Improved Data Splitting Function:**
 
@@ -359,27 +344,20 @@ def split_dataset(
     """Split dataset into train, validation, and test sets."""
     random.seed(seed)
     
-    # Shuffle data together
     combined = list(zip(image_paths, labels))
     random.shuffle(combined)
     image_paths, labels = zip(*combined)
     
-    # Calculate splits
     total_size = len(image_paths)
-    test_size = min(test_size, total_size // 10)
+    test_size = min(test_size, total_size // 10)  # Max 10% for test
     val_size = int((total_size - test_size) * val_split)
     train_size = total_size - val_size - test_size
     
-    # Split paths
     train_paths = list(image_paths[:train_size])
     val_paths = list(image_paths[train_size:train_size + val_size])
     test_paths = list(image_paths[train_size + val_size:])
     
-    print(f"Dataset split:")
-    print(f"  - Train: {len(train_paths)}")
-    print(f"  - Validation: {len(val_paths)}")
-    print(f"  - Test: {len(test_paths)}")
-    
+    print(f"📊 Dataset split: Train={len(train_paths)}, Val={len(val_paths)}, Test={len(test_paths)}")
     return train_paths, val_paths, test_paths
 ```
 
@@ -394,15 +372,10 @@ train_paths, val_paths, test_paths = split_dataset(image_paths, labels)
 
 Our custom dataset class handles the binary classification task by converting image paths to tensors and labels:
 
-**Custom Dataset Class with pathlib:**
+**Custom Dataset Class:**
 ```python
-from pathlib import Path
-from typing import List, Optional, Tuple
-import torch
-from torch.utils.data import Dataset
-
 class CatsVsDogsDataset(Dataset):
-    """PyTorch dataset for cats vs dogs classification."""
+    """PyTorch dataset for Cats vs Dogs classification."""
     
     def __init__(self, image_paths: List[Path], transform=None):
         self.image_paths = image_paths
@@ -414,14 +387,10 @@ class CatsVsDogsDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, float]:
         img_path = self.image_paths[idx]
         
-        # Load image
         image = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        # Get label from parent directory name
         label = 1.0 if img_path.parent.name == "Cat" else 0.0
-        
-        # Apply transformations
         if self.transform is not None:
             image = self.transform(image=image)["image"]
         
@@ -495,7 +464,8 @@ train_transform = A.Compose([
 
 Here's how our augmentations transform a single image:
 
-![Augmentation Examples](augmentation_examples.png)
+![Augmentation Examples](images/augmentation_examples.png)
+
 *Figure 2: Original image and five augmented versions showing the variety of transformations applied*
 
 ### The Science Behind Augmentation Choices
@@ -539,21 +509,38 @@ We use ResNet-50, a common architecture for image classification:
 
 **Model Configuration:**
 ```python
-# Model configuration
-params = {
-    "model": "resnet50",
-    "device": "cuda",
-    "lr": 0.001,
-    "batch_size": 64,
-    "num_workers": 4,
-    "epochs": 10,
-}
+# Configuration using dataclass
+@dataclass
+class Config:
+    """Training configuration."""
+    model_name: str = "resnet50"  # Can be: resnet18, resnet34, resnet50
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    learning_rate: float = 0.001
+    batch_size: int = 64
+    num_workers: int = 4
+    epochs: int = 10
+    image_size: int = 128
+    val_split: float = 0.2
+    test_size: int = 10
+    seed: int = 42
+    save_dir: Path = Path("checkpoints")
+    data_dir: Path = Path.home() / "datasets" / "cats-vs-dogs"
 
-# Initialize model, loss, and optimizer
-model = getattr(models, params["model"])(pretrained=False, num_classes=1)
-model = model.to(params["device"])
-criterion = nn.BCEWithLogitsLoss().to(params["device"])
-optimizer = torch.optim.Adam(model.parameters(), lr=params["lr"])
+# Create model function
+def create_model(config: Config) -> nn.Module:
+    """Create and initialize the model."""
+    if config.model_name.startswith('resnet'):
+        model = getattr(models, config.model_name)(weights=None)
+        num_features = model.fc.in_features
+        model.fc = nn.Linear(num_features, 1)
+    elif config.model_name.startswith('efficientnet'):
+        model = getattr(models, config.model_name)(weights=None)
+        num_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(num_features, 1)
+    else:
+        raise ValueError(f"Unsupported model: {config.model_name}")
+    
+    return model.to(config.device)
 ```
 
 
@@ -579,10 +566,8 @@ class MetricMonitor:
 
     def __str__(self):
         return " | ".join(
-            [
-                f"{metric_name}: {metric['avg']:.{self.float_precision}f}"
-                for (metric_name, metric) in self.metrics.items()
-            ]
+            [f"{metric_name}: {metric['avg']:.{self.float_precision}f}"
+             for (metric_name, metric) in self.metrics.items()]
         )
 
 def calculate_accuracy(output, target):
@@ -590,83 +575,184 @@ def calculate_accuracy(output, target):
     correct = (prediction == target).sum().item()
     accuracy = correct / output.shape[0]
     return accuracy
+
+class EarlyStopping:
+    """Early stopping to prevent overfitting."""
+    
+    def __init__(self, patience: int = 5, min_delta: float = 0.001):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.best_loss = None
+        self.early_stop = False
+    
+    def __call__(self, val_loss: float) -> bool:
+        if self.best_loss is None:
+            self.best_loss = val_loss
+        elif val_loss > self.best_loss - self.min_delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_loss = val_loss
+            self.counter = 0
+        
+        return self.early_stop
 ```
 
 **Create Data Loaders:**
 ```python
-train_dataset = CatsVsDogsDataset(images_filepaths=train_images_filepaths, transform=train_transform)
-val_dataset = CatsVsDogsDataset(images_filepaths=val_images_filepaths, transform=val_transform)
+# Create datasets
+train_dataset = CatsVsDogsDataset(train_paths, transform=train_transform)
+val_dataset = CatsVsDogsDataset(val_paths, transform=val_transform)
 
+# Create data loaders
+config = Config()
 train_loader = DataLoader(
     train_dataset,
-    batch_size=params["batch_size"],
+    batch_size=config.batch_size,
     shuffle=True,
-    num_workers=params["num_workers"],
+    num_workers=config.num_workers,
     pin_memory=True,
 )
 
 val_loader = DataLoader(
     val_dataset,
-    batch_size=params["batch_size"],
+    batch_size=config.batch_size,
     shuffle=False,
-    num_workers=params["num_workers"],
+    num_workers=config.num_workers,
     pin_memory=True,
 )
 ```
 
 **Training Function:**
 ```python
-def train(train_loader, model, criterion, optimizer, epoch, params):
+def train_epoch(
+    train_loader: DataLoader,
+    model: nn.Module,
+    criterion: nn.Module,
+    optimizer: torch.optim.Optimizer,
+    epoch: int,
+    device: str
+) -> Tuple[float, float]:
+    """Train for one epoch."""
     metric_monitor = MetricMonitor()
     model.train()
-    stream = tqdm(train_loader)
+    stream = tqdm(train_loader, desc=f"Epoch {epoch} [Train]")
     
-    for _, (images, target) in enumerate(stream, start=1):
-        images = images.to(params["device"], non_blocking=True)
-        target = target.to(params["device"], non_blocking=True).float().view(-1, 1)
+    for images, targets in stream:
+        images = images.to(device, non_blocking=True)
+        targets = targets.to(device, non_blocking=True).float().view(-1, 1)
         
-        output = model(images)
-        loss = criterion(output, target)
-        accuracy = calculate_accuracy(output, target)
+        # Forward pass
+        outputs = model(images)
+        loss = criterion(outputs, targets)
+        accuracy = calculate_accuracy(outputs, targets)
         
-        metric_monitor.update("Loss", loss.item())
-        metric_monitor.update("Accuracy", accuracy)
-        
+        # Backward pass
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
         
-        stream.set_description(f"Epoch: {epoch}. Train. {metric_monitor}")
+        # Update metrics
+        metric_monitor.update("Loss", loss.item())
+        metric_monitor.update("Accuracy", accuracy)
+        stream.set_postfix_str(str(metric_monitor))
+    
+    return metric_monitor.metrics["Loss"]["avg"], metric_monitor.metrics["Accuracy"]["avg"]
 ```
 
 **Validation Function:**
 ```python
-def validate(val_loader, model, criterion, epoch, params):
+def validate_epoch(
+    val_loader: DataLoader,
+    model: nn.Module,
+    criterion: nn.Module,
+    epoch: int,
+    device: str
+) -> Tuple[float, float]:
+    """Validate for one epoch."""
     metric_monitor = MetricMonitor()
     model.eval()
-    stream = tqdm(val_loader)
+    stream = tqdm(val_loader, desc=f"Epoch {epoch} [Val]")
     
     with torch.inference_mode():
-        for _, (images, target) in enumerate(stream, start=1):
-            images = images.to(params["device"], non_blocking=True)
-            target = target.to(params["device"], non_blocking=True).float().view(-1, 1)
+        for images, targets in stream:
+            images = images.to(device, non_blocking=True)
+            targets = targets.to(device, non_blocking=True).float().view(-1, 1)
             
-            output = model(images)
-            loss = criterion(output, target)
-            accuracy = calculate_accuracy(output, target)
+            outputs = model(images)
+            loss = criterion(outputs, targets)
+            accuracy = calculate_accuracy(outputs, targets)
             
             metric_monitor.update("Loss", loss.item())
             metric_monitor.update("Accuracy", accuracy)
-            
-            stream.set_description(f"Epoch: {epoch}. Validation. {metric_monitor}")
+            stream.set_postfix_str(str(metric_monitor))
+    
+    return metric_monitor.metrics["Loss"]["avg"], metric_monitor.metrics["Accuracy"]["avg"]
 ```
 
 **Training Loop:**
 ```python
-# Train the model
-for epoch in range(1, params["epochs"] + 1):
-    train(train_loader, model, criterion, optimizer, epoch, params)
-    validate(val_loader, model, criterion, epoch, params)
+# Initialize training components
+config = Config()
+model = create_model(config)
+criterion = nn.BCEWithLogitsLoss()
+optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
+scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+    optimizer, mode='min', factor=0.5, patience=3, verbose=True
+)
+
+# Training history
+history = {
+    "train_loss": [], "train_acc": [],
+    "val_loss": [], "val_acc": []
+}
+
+best_val_acc = 0.0
+config.save_dir.mkdir(exist_ok=True)
+
+# Initialize early stopping
+early_stopping = EarlyStopping(patience=5)
+
+# Training loop
+for epoch in range(1, config.epochs + 1):
+    train_loss, train_acc = train_epoch(
+        train_loader, model, criterion, optimizer, epoch, config.device
+    )
+    
+    val_loss, val_acc = validate_epoch(
+        val_loader, model, criterion, epoch, config.device
+    )
+    
+    # Update history
+    history["train_loss"].append(train_loss)
+    history["train_acc"].append(train_acc)
+    history["val_loss"].append(val_loss)
+    history["val_acc"].append(val_acc)
+    
+    # Update learning rate
+    scheduler.step(val_loss)
+    
+    # Save best model
+    if val_acc > best_val_acc:
+        best_val_acc = val_acc
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'val_acc': val_acc,
+            'val_loss': val_loss,
+        }, config.save_dir / 'best_model.pth')
+        print(f"  → Saved best model (val_acc: {val_acc:.4f})")
+    
+    # Early stopping check
+    if early_stopping(val_loss):
+        print(f"\nEarly stopping triggered at epoch {epoch}")
+        break
+    
+    print(f"Epoch {epoch}/{config.epochs}: Train Loss: {train_loss:.4f}, "
+          f"Train Acc: {train_acc:.4f}, Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}")
 ```
 
 ## Results and Performance
@@ -675,14 +761,15 @@ for epoch in range(1, params["epochs"] + 1):
 
 After training for 10 epochs, our model achieves these results:
 
-- **Final Training Accuracy**: ~89.0%
-- **Final Validation Accuracy**: ~90.9%
-- **Training Loss**: Decreased from 0.700 to 0.248
-- **Validation Loss**: Decreased from 0.684 to 0.222
+- **Final Training Accuracy**: 87.93%
+- **Final Validation Accuracy**: 89.94%
+- **Training Loss**: Decreased from 0.683 to 0.278
+- **Validation Loss**: Decreased from 0.696 to 0.233
 
 ### Training Progress
 
-![Training History](training_history.png)
+![Training History](images/training_history.png)
+
 *Figure 3: Training and validation loss/accuracy curves showing smooth convergence without overfitting*
 
 The consistent improvement in both training and validation metrics indicates that the model is learning without overfitting.
@@ -732,34 +819,37 @@ class CatsVsDogsInferenceDataset(Dataset):
 ```python
 # Create test dataset and loader
 test_transform = val_transform  # Use the same transform as validation
-test_dataset = CatsVsDogsInferenceDataset(images_filepaths=test_images_filepaths, transform=test_transform)
+test_dataset = CatsVsDogsInferenceDataset(images_filepaths=test_paths, transform=test_transform)
 test_loader = DataLoader(
     test_dataset,
-    batch_size=params["batch_size"],
+    batch_size=config.batch_size,
     shuffle=False,
-    num_workers=params["num_workers"],
+    num_workers=config.num_workers,
     pin_memory=True,
 )
 
 # Make predictions
-model = model.eval()
+model.eval()
 predicted_labels = []
-with torch.no_grad():
+with torch.inference_mode():
     for images in test_loader:
-        images = images.to(params["device"], non_blocking=True)
+        images = images.to(config.device, non_blocking=True)
         output = model(images)
         predictions = (torch.sigmoid(output) >= 0.5)[:, 0].cpu().numpy()
         predicted_labels += ["Cat" if is_cat else "Dog" for is_cat in predictions]
 
 # Display results
-display_image_grid(test_images_filepaths, predicted_labels)
+visualizer = Visualizer()
+visualizer.display_predictions(test_paths, predicted_labels)
 ```
 
 ### Model Predictions
 
 Here are the model's predictions on our test set:
 
-![Model Predictions](predictions_results.png)
+
+![Model Predictions](images/predictions_results.png)
+
 *Figure 4: Test set predictions. Green titles indicate correct predictions, red titles indicate misclassifications*
 
 ## Key Takeaways and Best Practices
@@ -818,46 +908,6 @@ Implement logging to track training progress and detect issues early:
 - **Confusion Matrix**: Understand which classes are confused with each other
 - **Error Analysis**: Examine misclassified examples to identify improvement areas
 
-## Code Improvements Summary
-
-Our enhanced implementation includes several modern Python best practices:
-
-### 1. **pathlib Instead of os.path**
-- Cleaner path operations with `/` operator
-- Platform-independent path handling
-- More readable and maintainable code
-
-### 2. **Type Hints Throughout**
-- Better code documentation and IDE support
-- Catches type errors early
-- Makes code more self-documenting
-
-### 3. **Dataclass for Configuration**
-- Centralized configuration management
-- Easy to modify hyperparameters
-- Default values with type safety
-
-### 4. **Better Data Splitting Function**
-- Flexible validation split ratio
-- Handles edge cases properly
-- Clear separation of concerns
-
-### 5. **Visualization Functions**
-- Show dataset samples
-- Display augmentation effects
-- Plot training history
-- Visualize predictions
-
-### 6. **Training Enhancements**
-- Early stopping to prevent overfitting
-- Learning rate scheduling
-- Model checkpointing
-- Progress bars with detailed metrics
-
-### 7. **Error Handling**
-- Validates images before training
-- Handles corrupted files gracefully
-- Clear error messages
 
 ## Complete Training Script
 
@@ -892,161 +942,233 @@ cudnn.benchmark = True
 # Configuration
 @dataclass
 class Config:
-    """Training configuration."""
-    model_name: str = "resnet50"
+    """Training configuration with common defaults."""
+    model_name: str = "resnet50"  # Can be: resnet18, resnet34, resnet50, efficientnet_b0
     device: str = "cuda" if torch.cuda.is_available() else "cpu"
-    learning_rate: float = 0.001
-    batch_size: int = 64
-    num_workers: int = 4
-    epochs: int = 10
-    image_size: int = 128
-    val_split: float = 0.2
-    test_size: int = 10
-    seed: int = 42
+    learning_rate: float = 0.001  # Starting LR for Adam optimizer
+    batch_size: int = 64  # Reduce if GPU memory issues
+    num_workers: int = 4  # Set to 0 on Windows if multiprocessing issues
+    epochs: int = 10  # Increase for better accuracy
+    image_size: int = 128  # Balance between speed and accuracy
+    val_split: float = 0.2  # 80/20 train/val split
+    test_size: int = 10  # Small test set for demo
+    seed: int = 42  # For reproducibility
     save_dir: Path = Path("checkpoints")
     data_dir: Path = Path.home() / "datasets" / "cats-vs-dogs"
+    
+    def __post_init__(self):
+        """Validate and adjust configuration."""
+        # Auto-disable AMP on CPU
+        if self.device == "cpu":
+            self.use_amp = False
+        
+        # Create directories
+        self.save_dir.mkdir(exist_ok=True)
+        
+class DataManager:
+    """Encapsulates all data-related operations."""
+    
+    def __init__(self, config: Config):
+        self.config = config
+        self.data_dir = config.data_dir
+        self.seed = config.seed
+        
+    class TqdmUpTo(tqdm):
+        """Progress bar for downloads."""
+        def update_to(self, b: int = 1, bsize: int = 1, tsize: Optional[int] = None) -> None:
+            if tsize is not None:
+                self.total = tsize
+            self.update(b * bsize - self.n)
 
-# Download utilities
-class TqdmUpTo(tqdm):
-    """Progress bar for downloads."""
-    def update_to(self, b: int = 1, bsize: int = 1, tsize: Optional[int] = None) -> None:
-        if tsize is not None:
-            self.total = tsize
-        self.update(b * bsize - self.n)
+    def download_and_extract(self, url: str) -> Path:
+        """Download and extract the dataset."""
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        filepath = self.data_dir / "kagglecatsanddogs_5340.zip"
+        
+        if not filepath.exists():
+            print(f"📥 Downloading dataset to {filepath}")
+            with self.TqdmUpTo(unit="B", unit_scale=True, unit_divisor=1024, miniters=1, 
+                          desc=filepath.name) as t:
+                urlretrieve(url, filename=filepath, reporthook=t.update_to)
+                t.total = t.n
+        else:
+            print("✅ Dataset already downloaded.")
+        
+        extract_dir = self.data_dir / "PetImages"
+        if not extract_dir.exists():
+            print("📦 Extracting dataset...")
+            shutil.unpack_archive(filepath, self.data_dir)
+        
+        return extract_dir
+    
+    def load_and_validate_images(self, data_dir: Path) -> Tuple[List[Path], List[str]]:
+        """Load image paths and validate them."""
+        cat_dir = data_dir / "Cat"
+        dog_dir = data_dir / "Dog"
+        
+        cat_images = list(cat_dir.glob("*.jpg"))
+        dog_images = list(dog_dir.glob("*.jpg"))
+        
+        valid_images = []
+        labels = []
+        
+        print("🔍 Validating images...")
+        for img_path in tqdm(cat_images + dog_images, desc="Checking images"):
+            img = cv2.imread(str(img_path))
+            if img is not None:
+                valid_images.append(img_path)
+                labels.append("Cat" if img_path.parent.name == "Cat" else "Dog")
+        
+        print(f"✅ Found {len(valid_images)} valid images out of {len(cat_images) + len(dog_images)} total")
+        return valid_images, labels
+    
+    def split_dataset(
+        self, 
+        image_paths: List[Path], 
+        labels: List[str]
+    ) -> Tuple[List[Path], List[Path], List[Path]]:
+        """Split dataset into train, validation, and test sets."""
+        random.seed(self.seed)
+        
+        combined = list(zip(image_paths, labels))
+        random.shuffle(combined)
+        image_paths, labels = zip(*combined)
+        
+        total_size = len(image_paths)
+        test_size = min(self.config.test_size, total_size // 10)  # Max 10% for test
+        val_size = int((total_size - test_size) * self.config.val_split)
+        train_size = total_size - val_size - test_size
+        
+        train_paths = list(image_paths[:train_size])
+        val_paths = list(image_paths[train_size:train_size + val_size])
+        test_paths = list(image_paths[train_size + val_size:])
+        
+        print(f"📊 Dataset split: Train={len(train_paths)}, Val={len(val_paths)}, Test={len(test_paths)}")
+        return train_paths, val_paths, test_paths
+    
+    def prepare_data(self) -> Tuple[List[Path], List[Path], List[Path]]:
+        """Complete data preparation pipeline."""
+        dataset_url = "https://download.microsoft.com/download/3/e/1/3e1c3f21-ecdb-4869-8368-6deba77b919f/kagglecatsanddogs_5340.zip"
+        data_dir = self.download_and_extract(dataset_url)
+        image_paths, labels = self.load_and_validate_images(data_dir)
+        return self.split_dataset(image_paths, labels)
 
-def download_and_extract(url: str, data_dir: Path) -> Path:
-    """Download and extract the dataset."""
-    data_dir.mkdir(parents=True, exist_ok=True)
-    filepath = data_dir / "kagglecatsanddogs_5340.zip"
-    
-    if not filepath.exists():
-        print(f"Downloading dataset to {filepath}")
-        with TqdmUpTo(unit="B", unit_scale=True, unit_divisor=1024, miniters=1, 
-                      desc=filepath.name) as t:
-            urlretrieve(url, filename=filepath, reporthook=t.update_to)
-            t.total = t.n
-    else:
-        print("Dataset already downloaded.")
-    
-    # Extract if needed
-    extract_dir = data_dir / "PetImages"
-    if not extract_dir.exists():
-        print("Extracting dataset...")
-        shutil.unpack_archive(filepath, data_dir)
-    
-    return extract_dir
 
-def load_and_validate_images(data_dir: Path) -> Tuple[List[Path], List[str]]:
-    """Load image paths and validate them."""
-    cat_dir = data_dir / "Cat"
-    dog_dir = data_dir / "Dog"
+class Visualizer:
+    """Handles all visualization tasks."""
     
-    # Get all image paths
-    cat_images = list(cat_dir.glob("*.jpg"))
-    dog_images = list(dog_dir.glob("*.jpg"))
+    @staticmethod
+    def show_dataset_samples(image_paths: List[Path], num_samples: int = 10):
+        """Display sample images from the dataset."""
+        fig, axes = plt.subplots(2, 5, figsize=(15, 6))
+        axes = axes.ravel()
+        
+        sample_paths = random.sample(image_paths, min(num_samples, len(image_paths)))
+        
+        for idx, img_path in enumerate(sample_paths):
+            img = cv2.imread(str(img_path))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            
+            axes[idx].imshow(img)
+            axes[idx].set_title(f"{img_path.parent.name}\n{img.shape}", fontsize=10)
+            axes[idx].axis('off')
+        
+        plt.tight_layout()
+        plt.savefig('dataset_samples.png', dpi=150, bbox_inches='tight')
+        plt.show()
     
-    # Validate images
-    valid_images = []
-    labels = []
-    
-    print("Validating images...")
-    for img_path in tqdm(cat_images + dog_images):
-        img = cv2.imread(str(img_path))
-        if img is not None:
-            valid_images.append(img_path)
-            labels.append("Cat" if img_path.parent.name == "Cat" else "Dog")
-    
-    print(f"Found {len(valid_images)} valid images out of {len(cat_images) + len(dog_images)} total")
-    return valid_images, labels
-
-def split_dataset(
-    image_paths: List[Path], 
-    labels: List[str], 
-    val_split: float = 0.2, 
-    test_size: int = 10, 
-    seed: int = 42
-) -> Tuple[List[Path], List[Path], List[Path]]:
-    """Split dataset into train, validation, and test sets."""
-    # Set random seed
-    random.seed(seed)
-    
-    # Shuffle data
-    combined = list(zip(image_paths, labels))
-    random.shuffle(combined)
-    image_paths, labels = zip(*combined)
-    
-    # Calculate splits
-    total_size = len(image_paths)
-    test_size = min(test_size, total_size // 10)  # Max 10% for test
-    val_size = int((total_size - test_size) * val_split)
-    train_size = total_size - val_size - test_size
-    
-    # Split data
-    train_paths = list(image_paths[:train_size])
-    val_paths = list(image_paths[train_size:train_size + val_size])
-    test_paths = list(image_paths[train_size + val_size:])
-    
-    print(f"Dataset split: Train={len(train_paths)}, Val={len(val_paths)}, Test={len(test_paths)}")
-    return train_paths, val_paths, test_paths
-
-# Visualization functions
-def show_dataset_samples(image_paths: List[Path], num_samples: int = 10):
-    """Display sample images from the dataset."""
-    fig, axes = plt.subplots(2, 5, figsize=(15, 6))
-    axes = axes.ravel()
-    
-    sample_paths = random.sample(image_paths, min(num_samples, len(image_paths)))
-    
-    for idx, img_path in enumerate(sample_paths):
-        img = cv2.imread(str(img_path))
+    @staticmethod
+    def show_augmented_samples(image_path: Path, transform, num_samples: int = 6):
+        """Show original and augmented versions of an image."""
+        img = cv2.imread(str(image_path))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         
-        axes[idx].imshow(img)
-        axes[idx].set_title(f"{img_path.parent.name}\n{img.shape}", fontsize=10)
-        axes[idx].axis('off')
-    
-    plt.tight_layout()
-    plt.savefig('dataset_samples.png', dpi=150, bbox_inches='tight')
-    plt.show()
-
-def show_augmented_samples(image_path: Path, transform, num_samples: int = 6):
-    """Show original and augmented versions of an image."""
-    img = cv2.imread(str(image_path))
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
-    axes = axes.ravel()
-    
-    # Show original
-    axes[0].imshow(img)
-    axes[0].set_title("Original", fontsize=12)
-    axes[0].axis('off')
-    
-    # Show augmented versions
-    for idx in range(1, num_samples):
-        augmented = transform(image=img)["image"]
-        # Convert tensor back to numpy for visualization
-        if isinstance(augmented, torch.Tensor):
-            augmented = augmented.permute(1, 2, 0).numpy()
-            # Denormalize if normalized
-            augmented = augmented * np.array([0.229, 0.224, 0.225]) + np.array([0.485, 0.456, 0.406])
-            augmented = (augmented * 255).astype(np.uint8)
+        viz_transform = A.Compose([
+            t for t in transform.transforms 
+            if not isinstance(t, (A.Normalize, ToTensorV2))
+        ])
         
-        axes[idx].imshow(augmented)
-        axes[idx].set_title(f"Augmented {idx}", fontsize=12)
-        axes[idx].axis('off')
+        fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+        axes = axes.ravel()
+        
+        axes[0].imshow(img)
+        axes[0].set_title("Original", fontsize=12)
+        axes[0].axis('off')
+        
+        for idx in range(1, num_samples):
+            augmented = viz_transform(image=img)["image"]
+            axes[idx].imshow(augmented)
+            axes[idx].set_title(f"Augmented {idx}", fontsize=12)
+            axes[idx].axis('off')
+        
+        plt.tight_layout()
+        plt.savefig('augmentation_examples.png', dpi=150, bbox_inches='tight')
+        plt.show()
     
-    plt.tight_layout()
-    plt.savefig('augmentation_examples.png', dpi=150, bbox_inches='tight')
-    plt.show()
+    @staticmethod
+    def plot_training_history(history: dict, save_path: Path = Path("training_history.png")):
+        """Plot training and validation metrics."""
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+        
+        ax1.plot(history["train_loss"], label="Train Loss", marker='o')
+        ax1.plot(history["val_loss"], label="Val Loss", marker='s')
+        ax1.set_xlabel("Epoch")
+        ax1.set_ylabel("Loss")
+        ax1.set_title("Training and Validation Loss")
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        
+        ax2.plot(history["train_acc"], label="Train Accuracy", marker='o')
+        ax2.plot(history["val_acc"], label="Val Accuracy", marker='s')
+        ax2.set_xlabel("Epoch")
+        ax2.set_ylabel("Accuracy")
+        ax2.set_title("Training and Validation Accuracy")
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
+        plt.show()
+    
+    @staticmethod
+    def display_predictions(image_paths: List[Path], predicted_labels: List[str], cols: int = 5):
+        """Display images with predicted labels."""
+        rows = len(image_paths) // cols
+        fig, axes = plt.subplots(rows, cols, figsize=(15, 6))
+        axes = axes.ravel()
+        
+        for i, image_path in enumerate(image_paths):
+            img = cv2.imread(str(image_path))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            
+            true_label = image_path.parent.name
+            predicted_label = predicted_labels[i]
+            color = "green" if true_label == predicted_label else "red"
+            
+            axes[i].imshow(img)
+            axes[i].set_title(f"Pred: {predicted_label}", color=color)
+            axes[i].axis('off')
+        
+        plt.tight_layout()
+        plt.savefig('predictions_results.png', dpi=150, bbox_inches='tight')
+        plt.show()
 
-# Dataset class
 class CatsVsDogsDataset(Dataset):
-    """PyTorch dataset for Cats vs Dogs classification."""
+    """Optimized PyTorch dataset with optional caching for faster training."""
     
-    def __init__(self, image_paths: List[Path], transform=None):
+    def __init__(self, image_paths: List[Path], transform=None, cache_images: bool = False):
         self.image_paths = image_paths
         self.transform = transform
+        self.cache_images = cache_images
+        self.image_cache = {}
+        
+        if cache_images:
+            print(f"📦 Caching {len(image_paths)} images in memory...")
+            for idx, path in enumerate(tqdm(image_paths, desc="Loading images")):
+                img = cv2.imread(str(path), cv2.IMREAD_COLOR)
+                if img is not None:
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    self.image_cache[idx] = img
     
     def __len__(self) -> int:
         return len(self.image_paths)
@@ -1054,14 +1176,13 @@ class CatsVsDogsDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, float]:
         img_path = self.image_paths[idx]
         
-        # Load image
-        image = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        if self.cache_images and idx in self.image_cache:
+            image = self.image_cache[idx].copy()  # Copy to avoid modifying cache
+        else:
+            image = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
-        # Get label from directory name
-        label = 1.0 if img_path.parent.name == "Cat" else 0.0
-        
-        # Apply transformations
+        label = 1.0 if img_path.parent.name == "Cat" else 0.0        
         if self.transform is not None:
             image = self.transform(image=image)["image"]
         
@@ -1088,19 +1209,20 @@ val_transform = A.Compose([
 # Create model with better initialization
 def create_model(config: Config) -> nn.Module:
     """Create and initialize the model."""
-    model = getattr(models, config.model_name)(pretrained=True)
-    
-    # Modify the final layer for binary classification
-    if hasattr(model, 'fc'):
+    # Try different architectures easily
+    if config.model_name.startswith('resnet'):
+        model = getattr(models, config.model_name)(weights=None)  # Use 'weights' instead of deprecated 'pretrained'
         num_features = model.fc.in_features
         model.fc = nn.Linear(num_features, 1)
-    elif hasattr(model, 'classifier'):
-        num_features = model.classifier[-1].in_features
-        model.classifier[-1] = nn.Linear(num_features, 1)
+    elif config.model_name.startswith('efficientnet'):
+        model = getattr(models, config.model_name)(weights=None)
+        num_features = model.classifier[1].in_features
+        model.classifier[1] = nn.Linear(num_features, 1)
+    else:
+        raise ValueError(f"Unsupported model: {config.model_name}")
     
     return model.to(config.device)
 
-# Early stopping class
 class EarlyStopping:
     """Early stopping to prevent overfitting."""
     
@@ -1150,15 +1272,6 @@ def calculate_accuracy(output, target):
     correct = (prediction == target).sum().item()
     accuracy = correct / output.shape[0]
     return accuracy
-
-# Create datasets and loaders
-train_dataset = CatsVsDogsDataset(images_filepaths=train_images_filepaths, transform=train_transform)
-val_dataset = CatsVsDogsDataset(images_filepaths=val_images_filepaths, transform=val_transform)
-
-train_loader = DataLoader(train_dataset, batch_size=params["batch_size"], shuffle=True,
-                         num_workers=params["num_workers"], pin_memory=True)
-val_loader = DataLoader(val_dataset, batch_size=params["batch_size"], shuffle=False,
-                       num_workers=params["num_workers"], pin_memory=True)
 
 # Training functions with improved features
 def train_epoch(
@@ -1222,49 +1335,18 @@ def validate_epoch(
     
     return metric_monitor.metrics["Loss"]["avg"], metric_monitor.metrics["Accuracy"]["avg"]
 
-def plot_training_history(history: dict, save_path: Path = Path("training_history.png")):
-    """Plot training and validation metrics."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
-    
-    # Plot loss
-    ax1.plot(history["train_loss"], label="Train Loss", marker='o')
-    ax1.plot(history["val_loss"], label="Val Loss", marker='s')
-    ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("Loss")
-    ax1.set_title("Training and Validation Loss")
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-    
-    # Plot accuracy
-    ax2.plot(history["train_acc"], label="Train Accuracy", marker='o')
-    ax2.plot(history["val_acc"], label="Val Accuracy", marker='s')
-    ax2.set_xlabel("Epoch")
-    ax2.set_ylabel("Accuracy")
-    ax2.set_title("Training and Validation Accuracy")
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
-    
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=150, bbox_inches='tight')
-    plt.show()
-
-# Main training function
 def train_model(config: Config):
     """Complete training pipeline."""
-    # Download and prepare data
+    # Initialize data manager and visualizer
+    data_manager = DataManager(config)
+    visualizer = Visualizer()
+    
+    # Prepare data
     print("Preparing dataset...")
-    dataset_url = "https://download.microsoft.com/download/3/e/1/3e1c3f21-ecdb-4869-8368-6deba77b919f/kagglecatsanddogs_5340.zip"
-    data_dir = download_and_extract(dataset_url, config.data_dir)
+    train_paths, val_paths, test_paths = data_manager.prepare_data()
     
-    # Load and split data
-    image_paths, labels = load_and_validate_images(data_dir)
-    train_paths, val_paths, test_paths = split_dataset(
-        image_paths, labels, config.val_split, config.test_size, config.seed
-    )
-    
-    # Show sample images
     print("\nDataset samples:")
-    show_dataset_samples(train_paths)
+    visualizer.show_dataset_samples(train_paths)
     
     # Create datasets and loaders
     train_dataset = CatsVsDogsDataset(train_paths, transform=train_transform)
@@ -1281,26 +1363,21 @@ def train_model(config: Config):
     
     # Show augmentation examples
     print("\nAugmentation examples:")
-    show_augmented_samples(train_paths[0], train_transform)
+    visualizer.show_augmented_samples(train_paths[0], train_transform)
     
-    # Initialize model, loss, optimizer, and scheduler
     model = create_model(config)
     criterion = nn.BCEWithLogitsLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer, mode='min', factor=0.5, patience=3, verbose=True
-    )
-    
-    # Initialize early stopping
+    )    
     early_stopping = EarlyStopping(patience=5)
     
-    # Training history
     history = {
         "train_loss": [], "train_acc": [],
         "val_loss": [], "val_acc": []
     }
     
-    # Create checkpoint directory
     config.save_dir.mkdir(exist_ok=True)
     best_val_acc = 0.0
     
@@ -1312,23 +1389,19 @@ def train_model(config: Config):
     
     # Training loop
     for epoch in range(1, config.epochs + 1):
-        # Train
         train_loss, train_acc = train_epoch(
             train_loader, model, criterion, optimizer, epoch, config.device
         )
         
-        # Validate
         val_loss, val_acc = validate_epoch(
             val_loader, model, criterion, epoch, config.device
         )
         
-        # Update history
         history["train_loss"].append(train_loss)
         history["train_acc"].append(train_acc)
         history["val_loss"].append(val_loss)
         history["val_acc"].append(val_acc)
         
-        # Update learning rate
         scheduler.step(val_loss)
         
         # Save best model
@@ -1343,23 +1416,33 @@ def train_model(config: Config):
             }, config.save_dir / 'best_model.pth')
             print(f"  → Saved best model (val_acc: {val_acc:.4f})")
         
-        # Early stopping
         if early_stopping(val_loss):
             print(f"\nEarly stopping triggered at epoch {epoch}")
             break
         
-        print(f"Epoch {epoch}: Train Loss: {train_loss:.4f}, Train Acc: {train_acc:.4f}, "
-              f"Val Loss: {val_loss:.4f}, Val Acc: {val_acc:.4f}\n")
+        print(f"Epoch {epoch}/{config.epochs} Summary:")
+        print(f"  Train - Loss: {train_loss:.4f}, Acc: {train_acc:.4f}")
+        print(f"  Val   - Loss: {val_loss:.4f}, Acc: {val_acc:.4f}")
+        if val_acc > best_val_acc:
+            print(f"  ✨ New best model! Improved from {best_val_acc:.4f} to {val_acc:.4f}")
+        print("-" * 50)
     
-    # Plot training history
-    plot_training_history(history)
-    
+    visualizer.plot_training_history(history)
     print(f"\nTraining completed! Best validation accuracy: {best_val_acc:.4f}")
     return model, history
 
 # Run training
 if __name__ == "__main__":
+    # Example 1: Default configuration
     config = Config()
+    
+    # Example 2: Custom configuration for faster training
+    # config = Config(
+    #     model_name="resnet18",  # Smaller model
+    #     batch_size=128,  # Larger batch if GPU memory allows
+    #     epochs=5,  # Fewer epochs for quick testing
+    # )
+    
     model, history = train_model(config)
 ```
 
