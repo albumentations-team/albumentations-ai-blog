@@ -99,7 +99,7 @@ Classification models learn hierarchical feature representations that transfer w
 
 ## The Role of Data Augmentation
 
-> **✅ Success:** In this tutorial, augmentation helped us achieve 87.9% validation accuracy with approximately 25,000 training images. Without augmentation, the same model typically plateaus at 75-80% validation accuracy while overfitting significantly (reaching 95%+ training accuracy).
+> In this tutorial, augmentation helped us achieve 87.9% validation accuracy with approximately 25,000 training images. Without augmentation, the same model typically plateaus at 75-80% validation accuracy while overfitting significantly (reaching 95%+ training accuracy).
 
 Deep learning models need diverse data to generalize well. While collecting more labeled data is ideal, it's often impractical due to cost, scarcity, or expertise requirements.
 
