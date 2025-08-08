@@ -34,12 +34,6 @@ seo:
 
 Image classification is one of the most fundamental tasks in computer vision, and building an effective classifier requires not just a good model architecture but also proper data preprocessing and augmentation techniques. In this tutorial, we'll walk through creating a binary image classifier that can distinguish between cats and dogs using PyTorch for the deep learning framework and Albumentations for image augmentations.
 
-### 🚀 Quick Start
-
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/albumentations-team/albumentations_examples/blob/main/notebooks/pytorch_classification.ipynb)
-
-Run this tutorial interactively in Google Colab - no setup required!
-
 ## What You'll Learn
 
 - ✅ Set up a complete image classification pipeline with PyTorch
