@@ -1,6 +1,6 @@
 ---
 title: "Input Normalization: What We Know, What We Don't, and Why It Works Anyway"
-date: 2025-01-14
+date: 2025-08-23
 author: vladimir-iglovikov
 categories:
   - tutorials
@@ -16,16 +16,152 @@ featured: false
 
 # Input Normalization: What We Know, What We Don't, and Why It Works Anyway
 
-Every computer vision practitioner knows the drill: subtract `[0.485, 0.456, 0.406]`, divide by `[0.229, 0.224, 0.225]`. These ImageNet statistics appear in almost every PyTorch tutorial, most pretrained models, and countless research papers. Yet Inception uses different values, YOLO skips mean subtraction entirely, and somehow they all work. Where do these numbers come from? And more importantly, why do different approaches all succeed?
+Every computer vision practitioner knows the drill: subtract `[0.485, 0.456, 0.406]`, divide by `[0.229, 0.224, 0.225]`. These ImageNet statistics appear in almost every PyTorch tutorial, most pretrained models, and countless research papers. Yet Inception uses different values, YOLO skips mean subtraction entirely, and somehow they all work.
+
+Where do these numbers come from? And more importantly, why do different approaches all succeed?
+
+> **📌 For the 99% who are fine-tuning pretrained models:**
+> 
+> Use whatever normalization your pretrained model expects:
+> - **ImageNet models** → `mean=[0.485, 0.456, 0.406]`, `std=[0.229, 0.224, 0.225]`
+> - **CLIP models** → `mean=[0.48145466, 0.4578275, 0.40821073]`, `std=[0.26862954, 0.26130258, 0.27577711]`
+> - **Inception/ViT** → `(image / 127.5) - 1`
+> - **YOLO** → `image / 255.0`
+> 
+> That's it. The first layer expects specific input distributions. Using different normalization won't break anything, but adds unnecessary adaptation overhead.
+> 
+> **Keep reading only if you want to understand why.**
+
+## What You'll Learn
+
+This is not your typical "normalize your inputs" tutorial. We're going deep into the theory, history, and practice of normalization — including what we don't understand.
+
+**By the end of this article, you'll know:**
+- Why those "magic numbers" `[0.485, 0.456, 0.406]` became universal
+- The rigorous mathematics behind normalization (and where it breaks down)
+- A secret weapon used by top Kaggle competitors
+- Why YOLO, Inception, and ImageNet all use different approaches — and all work
+- The gap between what we can prove and what we observe
+
+## Table of Contents
+
+1. **Part I: The Practice** 🏊‍♂️ — What you actually need to know (99% of readers can stop here)
+2. **Part II: The History** 🏊‍♂️🏊‍♂️ — How we got these specific numbers
+3. **Part III: The Mathematics** 🏊‍♂️🏊‍♂️🏊‍♂️ — LeCun's proof and its limitations
+4. **Part IV: The Competitive Edge** 🏊‍♂️🏊‍♂️ — Advanced techniques from Kaggle Grandmasters
+5. **Part V: Beyond Images** 🏊‍♂️ — Normalization in text, audio, and time series
+6. **Part VI: The Philosophy** 🏊‍♂️🏊‍♂️🏊‍♂️ — What normalization really means
+
+The depth indicators (🏊‍♂️) show how deep you're diving. Choose your own adventure based on your curiosity level.
+
+## The Story Ahead
 
 The story of input normalization is fascinating precisely because it reveals the gap between theory and practice in deep learning. We have:
 - **Solid mathematical foundations** — but only for simple cases
 - **Empirical best practices** — that work remarkably well
 - **Incomplete understanding** — of why it helps modern networks
 
+This isn't a weakness of the field; it's its strength. Like medieval alchemists who discovered aspirin's effects centuries before understanding its mechanism, we've learned to use what works while searching for deeper understanding.
+
 Let's explore what we can prove, what we observe, and what remains mysterious. The journey takes us from LeCun's elegant 1998 proofs through ImageNet's empirical traditions to today's massive transformers, revealing how a field can achieve remarkable success even when theoretical understanding lags behind.
 
-## The Parable of the Unbalanced Gradients
+---
+
+## Part I: The Practice 🏊‍♂️
+*What you need to know to get things done*
+
+### The Reality of Modern Deep Learning
+
+Let's be clear: **99% of practitioners fine-tune pretrained models rather than train from scratch**. This fundamentally changes how we think about normalization.
+
+When you download a ResNet pretrained on ImageNet, its first convolutional layer has spent millions of iterations learning filters that expect inputs normalized with ImageNet statistics. Those filters have adapted to specific input distributions.
+
+The rule is simple: **Always use the same normalization as the pretrained model was trained with**.
+
+Common normalizations for popular models:
+- **ImageNet pretrained** → `mean=[0.485, 0.456, 0.406]`, `std=[0.229, 0.224, 0.225]`
+- **CLIP models** → `mean=[0.48145466, 0.4578275, 0.40821073]`, `std=[0.26862954, 0.26130258, 0.27577711]`
+- **Inception/ViT** → `(image / 127.5) - 1`
+- **YOLO** → `image / 255.0`
+
+If you use different normalization:
+- The model still works (it's not catastrophic)
+- Convergence is slightly slower as the first layer adjusts its weights
+- You might need a few extra epochs to reach the same performance
+
+This is why those "magic numbers" appear everywhere — not because they're optimal for your specific task, but because your pretrained model expects them.
+
+### Training From Scratch (The Rare Case)
+
+The mathematical analysis and experimentation we'll discuss later applies primarily to training from scratch. In this case, you have freedom to choose normalization based on your data and architecture.
+
+When training from scratch:
+1. **Start with [-1, 1] normalization**: `(img / 127.5) - 1` — gives you zero-centered data
+2. **If performance is poor**, compute and use dataset statistics
+3. **If robustness is critical**, experiment with per-image normalization
+4. **For non-natural images**, always compute domain-specific statistics
+
+### Implementation with Albumentations
+
+```python
+import albumentations as A
+
+# For fine-tuning ImageNet models (most common)
+transform = A.Compose([
+    A.Resize(224, 224),
+    A.HorizontalFlip(p=0.5),
+    A.Normalize(
+        mean=(0.485, 0.456, 0.406),
+        std=(0.229, 0.224, 0.225),
+        max_pixel_value=255.0,
+    )
+])
+
+# For Inception/ViT models
+transform_inception = A.Compose([
+    A.Normalize(
+        mean=(0.5, 0.5, 0.5),
+        std=(0.5, 0.5, 0.5),
+        max_pixel_value=255.0,
+    )
+])
+
+# For YOLO models
+transform_yolo = A.Compose([
+    A.Normalize(
+        mean=(0, 0, 0),
+        std=(1, 1, 1),
+        max_pixel_value=255.0,
+    )
+])
+
+# Per-image normalization (for competitions)
+transform_per_image = A.Compose([
+    A.Normalize(normalization="image")
+])
+
+# Per-channel normalization
+transform_per_channel = A.Compose([
+    A.Normalize(normalization="image_per_channel")
+])
+
+# Min-max normalization
+transform_minmax = A.Compose([
+    A.Normalize(normalization="min_max")
+])
+
+# Min-max per channel normalization
+transform_minmax_per_channel = A.Compose([
+    A.Normalize(normalization="min_max_per_channel")
+])
+```
+
+---
+
+## Part II: The History 🏊‍♂️🏊‍♂️
+*How we got here and why these specific numbers*
+
+### The Parable of the Unbalanced Gradients
 
 Imagine training a neural network in 1991 — before convolutional networks were popular. Images come straight from the camera: pixel values ranging from 0 to 255. Each input pixel has its own associated weight (fully connected layers were the norm). The weights are initialized with small random values of similar magnitude, say around 0.01, as was the custom.
 
@@ -45,7 +181,7 @@ The neurons connected to bright pixels get massive updates while those connected
 
 This was the world before systematic input normalization. Networks were fragile, temperamental beasts that required careful hand-tuning and often failed to converge at all.
 
-## The Statistical Heritage: A Tradition Borrowed
+### The Statistical Heritage: A Tradition Borrowed
 
 Before diving into LeCun's work, it's worth noting that input normalization didn't originate with neural networks. Statisticians had been standardizing variables for decades in linear and logistic regression. Why? For interpretability.
 
@@ -57,21 +193,110 @@ If both have similar impact on the outcome, then after the model converges: `w�
 
 This means `w₁` ends up ~3,333 times larger than `w₂` just to compensate for the scale difference! Without normalization, you can't compare coefficient magnitudes to understand feature importance — a huge coefficient might just mean the feature has small values, not that it's important.
 
-After normalizing both features to [0, 1] or standardizing to mean=0, std=1, features with similar impact will have similar coefficient magnitudes. Now larger |w| actually means larger impact.
+After normalizing both features to `[0, 1]` or standardizing to `mean=0`, `std=1`, features with similar impact will have similar coefficient magnitudes. Now larger |w| actually means larger impact.
 
 This tradition likely influenced early neural network researchers. They borrowed a practice from statistics that made coefficients interpretable and discovered it also made optimization work better — though for entirely different mathematical reasons.
 
-## Enter Yann LeCun: The Mathematical Foundation
+### Enter Yann LeCun: The Mathematical Foundation
 
 In 1998, Yann LeCun and his colleagues published "Efficient BackProp," a paper about general neural network training — not specifically about images. It provided mathematical justification for what may have started as borrowed tradition. The paper stated:
 
 > "Convergence is usually faster if the average of each input variable over the training set is close to zero."
 
-This applied to any numerical input — financial data, sensor readings, or pixels. LeCun proved it mathematically for certain cases. Let's reproduce the actual mathematics, not the handwaving that often passes for "proof" in machine learning.
+This applied to any numerical input — financial data, sensor readings, or pixels. LeCun proved it mathematically for certain cases — rigorous proofs that we'll explore in detail in Part III. But the key insight was that normalization wasn't just a borrowed statistical tradition; it had a solid mathematical foundation in optimization theory.
 
-## The Mathematical Proof: Why Normalization Actually Works
+### The Birth of ImageNet Statistics
 
-### Setting Up the Problem
+Fast forward to 2012. Alex Krizhevsky is training AlexNet, the network that would ignite the deep learning revolution. To normalize the inputs, what statistics should be used?
+
+Normalizing each image individually would lose information about absolute brightness — a dark night scene would look identical to a bright day. Instead, Krizhevsky computed the mean and standard deviation across the entire ImageNet training set.
+
+For each color channel across millions of images:
+- Red channel: mean = 0.485, std = 0.229
+- Green channel: mean = 0.456, std = 0.224  
+- Blue channel: mean = 0.406, std = 0.225
+
+These numbers weren't arbitrary. They reflected the statistical reality of natural images in ImageNet:
+- The green channel has slightly lower mean (the world has a lot of green)
+- The blue channel has the highest standard deviation (skies vary from deep blue to white)
+- All channels cluster around middle values (the world is neither pure black nor pure white)
+
+These "magic numbers" became canon. Every subsequent ImageNet model used them. Transfer learning spread them across domains. Today, we use ImageNet statistics to classify medical images, satellite photos, and even artwork — domains that have vastly different color distributions.
+
+### The Inception Twist: When 0.5 Is All You Need
+
+Google's Inception models took a different path. Instead of computing dataset statistics, they used a simple normalization:
+
+```python
+normalized = (image / 127.5) - 1  # Maps [0, 255] to [-1, 1]
+```
+
+This maps the [0, 255] range to [-1, 1]. Why? The Inception team argued that:
+
+1. **Simplicity matters**: No need to compute or remember dataset statistics
+2. **Symmetry is powerful**: Having both positive and negative values helps with certain activation functions
+3. **Range is predictable**: Inputs always lie in [-1, 1]
+
+Surprisingly, this worked just as well as ImageNet normalization for many tasks. It suggested that the exact normalization scheme matters less than having *some* normalization.
+
+### YOLO's Rebellion: The Case for Not Centering
+
+The YOLO (You Only Look Once) object detection models made an even more radical choice:
+
+```python
+normalized = image / 255.0  # That's it!
+```
+
+No mean subtraction. No standard deviation scaling. Just divide by 255 to get values in [0, 1].
+
+The original YOLO paper by Joseph Redmon doesn't explicitly justify this choice, but we can identify several actual reasons from the implementation and architecture:
+
+1. **Output consistency**: YOLO uses sigmoid activations for its final predictions. The paper states: "We parametrize the bounding box x and y coordinates to be offsets of a particular grid cell location so they are also bounded between 0 and 1." Having inputs and outputs in the same [0, 1] range creates architectural symmetry.
+
+2. **Simplicity over complexity**: YOLO was designed for speed. Computing dataset statistics would add preprocessing overhead. Redmon's implementation philosophy favored straightforward approaches that worked well enough.
+
+3. **Leaky ReLU compatibility**: YOLO uses leaky ReLU activations (α=0.1) throughout the network. These work well with positive inputs, and the small negative slope handles any internal negative values without dead neurons.
+
+4. **Batch normalization handles the rest**: Starting with YOLOv2, batch normalization was added after every convolutional layer. This means the network internally re-normalizes activations anyway, reducing the importance of input centering.
+
+Interestingly, this minimal normalization became a YOLO signature. All subsequent versions (YOLOv2 through YOLOv8) kept this simple [0, 1] scaling, suggesting it's sufficient when combined with modern architectural elements like batch normalization.
+
+### The Transformer Case: Not a Coincidence
+
+Vision Transformers (ViTs) often use the same [-1, 1] normalization as Inception:
+```python
+normalized = (image / 127.5) - 1  # Same as Inception
+```
+
+This is likely **not a coincidence**. Consider the timeline and context:
+
+1. **Historical influence**: ViT came years after Inception. The authors were well aware of Inception's normalization success.
+
+2. **Google heritage**: Many ViT researchers worked at Google Brain, where Inception was developed. They had institutional knowledge that this simple normalization worked well.
+
+3. **Transformer tradition**: NLP transformers typically use symmetric ranges for embeddings. Using [-1, 1] for images aligns with this convention.
+
+4. **Theoretical alignment**: Transformers have operations that benefit from symmetric inputs:
+   - Dot-product attention scores
+   - Sinusoidal positional encodings (naturally symmetric around zero)
+   - Layer normalization (works best with zero-centered inputs)
+
+5. **Empirical validation**: Years of Inception models had proven that [-1, 1] normalization worked as well as dataset-specific statistics, while being simpler.
+
+Some researchers speculate that additional transformer mechanisms might help:
+- **LayerNorm at each layer** - but this doesn't eliminate the need for good initial scaling
+- **Scaled dot-product attention** - the `1/√d` factor provides some normalization, but softmax is NOT truly scale-invariant
+
+The success of both Inception and ViTs with this simple normalization challenged a core assumption: that you need dataset-specific statistics (like ImageNet's means and stds). It suggests that **the exact normalization values matter less than having zero-centered data at a reasonable scale**.
+
+But why does normalization work at all? What's the mathematical foundation that LeCun discovered? And where does that foundation break down for modern architectures? Let's dive into the mathematics in Part III.
+
+## Part III: The Mathematics 🏊‍♂️🏊‍♂️🏊‍♂️
+*What we can prove, what we can't, and why*
+
+### The Mathematical Proof: Why Normalization Actually Works
+
+#### Setting Up the Problem
 
 Consider a simple linear neuron (the argument extends to nonlinear cases):
 
@@ -87,7 +312,7 @@ Where:
 
 The error function is `E = ½(y - t)²` where `t` is the target.
 
-### The Gradient Calculation
+#### The Gradient Calculation
 
 The gradient of the error with respect to weight `wᵢ` is:
 
@@ -99,7 +324,7 @@ Where `δ = (y - t)` is the error signal.
 
 **Key Insight #1**: The gradient is proportional to the input value `xᵢ`.
 
-### The Problem with Unnormalized Inputs
+#### The Problem with Unnormalized Inputs
 
 Now, suppose inputs have different scales. Let's say:
 - `x₁` ranges from 0 to 1
@@ -119,7 +344,7 @@ This creates two problems:
    - If `η` is small enough for `w₂` to converge stably, `w₁` barely moves
    - If `η` is large enough for `w₁` to learn quickly, `w₂` oscillates wildly
 
-### The Hessian Matrix Analysis
+#### The Hessian Matrix Analysis
 
 The second-order behavior is captured by the Hessian matrix. For our linear neuron, the Hessian is:
 
@@ -140,7 +365,7 @@ H = | E[x₁²]    E[x₁x₂]  |   =  | ~0.33    ~166.5  |
 
 The condition number (ratio of largest to smallest eigenvalue) is approximately 10⁶!
 
-### What the Condition Number Means
+#### What the Condition Number Means
 
 The condition number determines the "elongation" of the error surface. With a condition number of 10⁶:
 
@@ -148,7 +373,7 @@ The condition number determines the "elongation" of the error surface. With a co
 2. **Convergence is slow**: You need ~10⁶ iterations to traverse the valley
 3. **Numerical instability**: Small changes in one direction cause huge changes in another
 
-### The Magic of Zero Mean
+#### The Magic of Zero Mean
 
 Now let's normalize to zero mean. For each input:
 
@@ -177,7 +402,7 @@ H = | Var(x₁)    0        |   =  | σ₁²    0   |
 
 The matrix is now diagonal — the error surface axes align with the weight axes!
 
-### The Final Step: Unit Variance
+#### The Final Step: Unit Variance
 
 Scaling to unit variance:
 
@@ -198,7 +423,7 @@ The Hessian is now the identity matrix! This means:
 2. **Optimal learning rate is the same for all weights**: `η_optimal = 1/λ_max = 1`
 3. **Convergence in one step for linear problems**: The gradient points directly at the minimum
 
-### The Complete Mathematical Argument
+#### The Complete Mathematical Argument
 
 LeCun's complete argument involves three transformations:
 
@@ -217,7 +442,7 @@ LeCun's complete argument involves three transformations:
 - Normalizes learning rates
 - Mathematical effect: `E[xᵢ²] = 1` for all `i`
 
-### The Nonlinear Case
+#### The Nonlinear Case
 
 For nonlinear activation functions `f`, the analysis is similar but includes the derivative:
 
@@ -236,7 +461,7 @@ For sigmoid activations, there's an additional benefit. The sigmoid function `σ
 
 With zero-mean inputs and initialized-near-zero weights, we start in the high-gradient region!
 
-### Empirical Evidence from Early Research
+#### Empirical Evidence from Early Research
 
 Early experiments with neural networks showed improvements with normalization, though the exact patterns varied:
 
@@ -256,7 +481,7 @@ Yet practitioners often report that full standardization works better. Why? We d
 
 This gap between theory and reported practice remains unexplained.
 
-### Why This Isn't Just Handwaving (For This Specific Case)
+#### Why This Isn't Just Handwaving (For This Specific Case)
 
 The key differentiator from typical ML "proofs" is that **for the single-layer linear case with quadratic loss**, we can:
 
@@ -275,13 +500,13 @@ This isn't correlation; it's causation backed by mathematics — **but only for 
 
 For those cases, we're back to empirical observations and speculation.
 
-## The Limits of Mathematical Rigor: Where Proof Meets Practice
+### The Limits of Mathematical Rigor: Where Proof Meets Practice
 
 Now for the uncomfortable truth that most papers gloss over: **this rigorous proof does NOT extend cleanly to modern deep learning**. Let's be precise about where the mathematics holds and where we rely on empirical evidence.
 
-### Where the Proof Breaks Down
+#### Where the Proof Breaks Down
 
-#### 1. Non-Convex Loss Functions
+##### 1. Non-Convex Loss Functions
 
 LeCun's proof assumes quadratic loss `E = ½(y - t)²`. For other losses:
 
@@ -301,7 +526,7 @@ Where `J` is the Jacobian and `p` are the softmax probabilities. This is no long
 
 **What we can say:** The mathematics no longer applies. We observe empirically that normalization helps, but have no theoretical justification.
 
-#### 2. Deep Networks with Nonlinearities
+##### 2. Deep Networks with Nonlinearities
 
 Consider a two-layer network:
 ```
@@ -321,7 +546,7 @@ Where `⊙` is element-wise multiplication. The input scale still affects gradie
 
 Important: The "covariate shift" argument often cited for deep networks is about internal activations, not inputs. We have no rigorous proof that input normalization helps deep networks beyond the first layer effect.
 
-#### 3. Convolutional Layers
+##### 3. Convolutional Layers
 
 For convolutions, the weight gradient is:
 ```
@@ -334,7 +559,7 @@ However, convolutions have a built-in smoothing effect. A typical 3×3 kernel on
 
 An open research question: In CNNs without batch normalization trained on [0, 255] images, what do intermediate layer activations look like after training? Does the network learn to internally normalize — adjusting first-layer weights to center and scale the data for subsequent layers? Some evidence suggests yes, but we lack systematic studies. This "self-normalization" hypothesis could explain why some networks train successfully even without explicit normalization.
 
-#### 4. Transformers and Attention
+##### 4. Transformers and Attention
 
 For self-attention:
 ```
@@ -348,9 +573,9 @@ The gradients involve:
 
 Here, the original proof doesn't apply at all, yet we empirically observe that normalization helps. We don't know why.
 
-### What We Observe (But Can't Prove)
+#### What We Observe (But Can't Prove)
 
-#### The Empirical Reality
+##### The Empirical Reality
 
 We observe that normalization helps in practice, and we have several **hypotheses** for why this might be:
 
@@ -378,35 +603,7 @@ We observe that normalization helps in practice, and we have several **hypothese
    BN(bad_input) → requires extreme β, γ to compensate (empirical observation)
    ```
 
-#### The Transformer Case: Not a Coincidence
-
-Vision Transformers (ViTs) often use the same [-1, 1] normalization as Inception:
-```python
-normalized = (image / 127.5) - 1  # Same as Inception
-```
-
-This is likely **not a coincidence**. Consider the timeline and context:
-
-1. **Historical influence**: ViT came years after Inception. The authors were well aware of Inception's normalization success.
-
-2. **Google heritage**: Many ViT researchers worked at Google Brain, where Inception was developed. They had institutional knowledge that this simple normalization worked well.
-
-3. **Transformer tradition**: NLP transformers typically use symmetric ranges for embeddings. Using [-1, 1] for images aligns with this convention.
-
-4. **Theoretical alignment**: Transformers have operations that benefit from symmetric inputs:
-   - Dot-product attention scores
-   - Sinusoidal positional encodings (naturally symmetric around zero)
-   - Layer normalization (works best with zero-centered inputs)
-
-5. **Empirical validation**: Years of Inception models had proven that [-1, 1] normalization worked as well as dataset-specific statistics, while being simpler.
-
-Some researchers speculate that additional transformer mechanisms might help:
-- **LayerNorm at each layer** - but this doesn't eliminate the need for good initial scaling
-- **Scaled dot-product attention** - the `1/√d` factor provides some normalization, but softmax is NOT truly scale-invariant
-
-The success of both Inception and ViTs with this simple normalization challenged a core assumption: that you need dataset-specific statistics (like ImageNet's means and stds). It suggests that **the exact normalization values matter less than having zero-centered data at a reasonable scale**.
-
-### What We Can Actually Claim
+#### What We Can Actually Claim
 
 Here's what we can say with mathematical rigor:
 
@@ -429,7 +626,7 @@ Here's what we can say with mathematical rigor:
 - Adversarial training
 - Meta-learning
 
-### Practical Reasons (Not Theoretical Justifications)
+#### Practical Reasons (Not Theoretical Justifications)
 
 While we lack theoretical understanding, there are practical engineering reasons why normalization is useful:
 
@@ -451,7 +648,7 @@ While we lack theoretical understanding, there are practical engineering reasons
    - Quantization works best with normalized values
    - Mixed precision training requires controlled scales
 
-### The Empirical Observation (Not a Theorem)
+#### The Empirical Observation (Not a Theorem)
 
 We cannot state a theorem without proof, but we can report empirical observations:
 
@@ -469,63 +666,35 @@ The gap between theory and practice is enormous. We have:
 
 We use normalization because it empirically works, not because we understand why.
 
-## The Birth of ImageNet Statistics
+### The Empirical Evidence: Does Normalization Really Help?
 
-Fast forward to 2012. Alex Krizhevsky is training AlexNet, the network that would ignite the deep learning revolution. To normalize the inputs, what statistics should be used?
+In 2019, researchers at Google Brain decided to test whether normalization truly matters. They trained ResNet-50 on ImageNet with various normalization schemes:
 
-Normalizing each image individually would lose information about absolute brightness — a dark night scene would look identical to a bright day. Instead, Krizhevsky computed the mean and standard deviation across the entire ImageNet training set.
+| Normalization Method | Top-1 Accuracy | Training Time |
+|---------------------|----------------|---------------|
+| No normalization | 68.2% | 147 epochs |
+| Per-channel [0,1] scaling | 74.9% | 92 epochs |
+| ImageNet statistics | 76.1% | 90 epochs |
+| Per-image normalization | 75.3% | 95 epochs |
 
-For each color channel across millions of images:
-- Red channel: mean = 0.485, std = 0.229
-- Green channel: mean = 0.456, std = 0.224  
-- Blue channel: mean = 0.406, std = 0.225
+The results were striking:
+1. **No normalization severely hurts performance** — 8% accuracy drop!
+2. **Simple scaling helps tremendously** — just dividing by 255 recovers most performance
+3. **Dataset statistics give the best results** — but only marginally
+4. **Per-image normalization is competitive** — despite losing absolute intensity information
 
-These numbers weren't arbitrary. They reflected the statistical reality of natural images in ImageNet:
-- The green channel has slightly lower mean (the world has a lot of green)
-- The blue channel has the highest standard deviation (skies vary from deep blue to white)
-- All channels cluster around middle values (the world is neither pure black nor pure white)
+But the real surprise was in the training dynamics. Models without normalization needed:
+- 10x smaller learning rates
+- Careful learning rate schedules
+- Gradient clipping to prevent explosion
+- Often failed to converge at all with standard hyperparameters
 
-These "magic numbers" became canon. Every subsequent ImageNet model used them. Transfer learning spread them across domains. Today, we use ImageNet statistics to classify medical images, satellite photos, and even artwork — domains that have vastly different color distributions.
+---
 
-## The Inception Twist: When 0.5 Is All You Need
+## Part IV: The Competitive Edge 🏊‍♂️🏊‍♂️
+*Advanced techniques and insights*
 
-Google's Inception models took a different path. Instead of computing dataset statistics, they used a simple normalization:
-
-```python
-normalized = (image / 127.5) - 1  # Maps [0, 255] to [-1, 1]
-```
-
-This maps the [0, 255] range to [-1, 1]. Why? The Inception team argued that:
-
-1. **Simplicity matters**: No need to compute or remember dataset statistics
-2. **Symmetry is powerful**: Having both positive and negative values helps with certain activation functions
-3. **Range is predictable**: Inputs always lie in [-1, 1]
-
-Surprisingly, this worked just as well as ImageNet normalization for many tasks. It suggested that the exact normalization scheme matters less than having *some* normalization.
-
-## YOLO's Rebellion: The Case for Not Centering
-
-The YOLO (You Only Look Once) object detection models made an even more radical choice:
-
-```python
-normalized = image / 255.0  # That's it!
-```
-
-No mean subtraction. No standard deviation scaling. Just divide by 255 to get values in [0, 1].
-
-The original YOLO paper by Joseph Redmon doesn't explicitly justify this choice, but we can identify several actual reasons from the implementation and architecture:
-
-1. **Output consistency**: YOLO uses sigmoid activations for its final predictions. The paper states: "We parametrize the bounding box x and y coordinates to be offsets of a particular grid cell location so they are also bounded between 0 and 1." Having inputs and outputs in the same [0, 1] range creates architectural symmetry.
-
-2. **Simplicity over complexity**: YOLO was designed for speed. Computing dataset statistics would add preprocessing overhead. Redmon's implementation philosophy favored straightforward approaches that worked well enough.
-
-3. **Leaky ReLU compatibility**: YOLO uses leaky ReLU activations (α=0.1) throughout the network. These work well with positive inputs, and the small negative slope handles any internal negative values without dead neurons.
-
-4. **Batch normalization handles the rest**: Starting with YOLOv2, batch normalization was added after every convolutional layer. This means the network internally re-normalizes activations anyway, reducing the importance of input centering.
-
-Interestingly, this minimal normalization became a YOLO signature. All subsequent versions (YOLOv2 through YOLOv8) kept this simple [0, 1] scaling, suggesting it's sufficient when combined with modern architectural elements like batch normalization.
-
-## The Hidden Augmentation: Per-Image Normalization
+### The Hidden Augmentation: Per-Image Normalization
 
 Here's where things get interesting. What if we normalize each image using its own statistics?
 
@@ -547,10 +716,10 @@ But this technique is actually a secret weapon of top Kaggle competitors. Christ
 
 Why does this work? We believe there are two key mechanisms:
 
-### 1. Distribution Narrowing
+#### 1. Distribution Narrowing
 Per-image normalization narrows the input distribution. Bright and dark images become similar after normalization, forcing the network to focus on patterns and textures rather than absolute intensity. This can improve generalization when lighting conditions vary widely.
 
-### 2. Implicit Augmentation Through Crops
+#### 2. Implicit Augmentation Through Crops
 Here's the clever insight: Consider what happens when you take random crops during training.
 
 With standard normalization (e.g., ImageNet stats):
@@ -577,34 +746,11 @@ normalized_B = (σ₁/σ₂) * normalized_A + (μ₁/σ₂ - μ₂/σ₂)
 
 This is exactly a brightness and contrast transformation! Per-image normalization effectively incorporates these augmentations implicitly, which might explain why it often improves model robustness in competitions where generalization is crucial.
 
-## The Empirical Evidence: Does Normalization Really Help?
-
-In 2019, researchers at Google Brain decided to test whether normalization truly matters. They trained ResNet-50 on ImageNet with various normalization schemes:
-
-| Normalization Method | Top-1 Accuracy | Training Time |
-|---------------------|----------------|---------------|
-| No normalization | 68.2% | 147 epochs |
-| Per-channel [0,1] scaling | 74.9% | 92 epochs |
-| ImageNet statistics | 76.1% | 90 epochs |
-| Per-image normalization | 75.3% | 95 epochs |
-
-The results were striking:
-1. **No normalization severely hurts performance** — 8% accuracy drop!
-2. **Simple scaling helps tremendously** — just dividing by 255 recovers most performance
-3. **Dataset statistics give the best results** — but only marginally
-4. **Per-image normalization is competitive** — despite losing absolute intensity information
-
-But the real surprise was in the training dynamics. Models without normalization needed:
-- 10x smaller learning rates
-- Careful learning rate schedules
-- Gradient clipping to prevent explosion
-- Often failed to converge at all with standard hyperparameters
-
-## The Normalization Landscape: A Taxonomy
+### The Normalization Landscape: A Taxonomy
 
 Let's map out the normalization landscape with mathematical precision:
 
-### 1. Standard Normalization (Dataset Statistics)
+#### 1. Standard Normalization (Dataset Statistics)
 ```python
 x_norm = (x - μ_dataset) / σ_dataset
 ```
@@ -612,19 +758,19 @@ x_norm = (x - μ_dataset) / σ_dataset
 - **Cons**: Requires computing dataset statistics, may not transfer well to other domains
 - **Use when**: Training from scratch on a specific dataset
 
-### 2. Fixed Normalization (ImageNet/Inception)
+#### 2. Fixed Normalization (ImageNet/Inception)
 ```python
 # ImageNet style
 x_norm = (x - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]
 
 # Inception style  
-x_norm = (x / 255.0 - 0.5) / 0.5
+x_norm = (x / 127.5) - 1
 ```
 - **Pros**: No computation needed, enables transfer learning, well-tested
 - **Cons**: May be suboptimal for non-natural images
 - **Use when**: Fine-tuning pretrained models, working with natural images
 
-### 3. Min-Max Scaling
+#### 3. Min-Max Scaling
 ```python
 x_norm = (x - x.min()) / (x.max() - x.min())
 ```
@@ -632,7 +778,7 @@ x_norm = (x - x.min()) / (x.max() - x.min())
 - **Cons**: Sensitive to outliers, different scale per image
 - **Use when**: Input range varies wildly, outliers are rare
 
-### 4. Per-Image Normalization
+#### 4. Per-Image Normalization
 ```python
 x_norm = (x - x.mean()) / x.std()
 ```
@@ -640,7 +786,7 @@ x_norm = (x - x.mean()) / x.std()
 - **Cons**: Loses absolute intensity information, can amplify noise in uniform regions
 - **Use when**: Robustness to lighting is crucial, dataset has varied conditions
 
-### 5. Per-Channel Normalization
+#### 5. Per-Channel Normalization
 ```python
 for c in channels:
     x_norm[c] = (x[c] - x[c].mean()) / x[c].std()
@@ -649,46 +795,7 @@ for c in channels:
 - **Cons**: Can create color artifacts, loses inter-channel relationships
 - **Use when**: Channels have very different distributions, color accuracy isn't critical
 
-## The Batch Normalization Connection
-
-While our focus is input normalization, it's worth noting the beautiful parallel with batch normalization, introduced by Ioffe and Szegedy in 2015. Batch normalization applies the same principle — zero mean, unit variance — but to intermediate activations:
-
-```python
-# Input normalization (preprocessing)
-x_normalized = (x - mean_dataset) / std_dataset
-
-# Batch normalization (during forward pass)
-h_normalized = (h - mean_batch) / std_batch
-```
-
-The similarity isn't coincidental. Both techniques address the same fundamental problem: keeping values in a range where gradients flow efficiently. Input normalization handles it at the entrance; batch normalization maintains it throughout the network.
-
-## The Reality: Fine-Tuning vs Training From Scratch
-
-Let's be clear: **99% of practitioners fine-tune pretrained models rather than train from scratch**. This fundamentally changes how we think about normalization.
-
-### The Fine-Tuning Rule
-
-When fine-tuning a pretrained model, **always use the same normalization as the original training**. Why? The first convolutional layer has learned filters expecting inputs in a specific range. 
-
-If you use different normalization:
-- The model still works (it's not catastrophic)
-- Convergence is slightly slower as the first layer adjusts its weights
-- You might need a few extra epochs to reach the same performance
-
-Since most people fine-tune models trained on ImageNet, they use ImageNet statistics:
-```python
-mean = [0.485, 0.456, 0.406]
-std = [0.229, 0.224, 0.225]
-```
-
-This is why these "magic numbers" appear everywhere — not because they're optimal for your specific task, but because your pretrained model expects them.
-
-### Training From Scratch (The Rare Case)
-
-The mathematical analysis and experimentation we discussed earlier applies primarily to training from scratch. In this case, you have freedom to choose normalization based on your data and architecture.
-
-## Understanding the Magic Numbers
+### Understanding the Magic Numbers
 
 Those famous ImageNet statistics aren't arbitrary, but they're also not fundamental constants of the universe. They're empirical measurements:
 
@@ -698,39 +805,10 @@ Those famous ImageNet statistics aren't arbitrary, but they're also not fundamen
 
 3. **Why do alternatives work?** Inception uses (0.5, 0.5, 0.5) for simplicity. YOLO uses no centering at all. That these alternatives work reasonably well suggests the exact values matter less than having some consistent normalization.
 
-Here's a fun experiment — compute statistics for different image domains:
+---
 
-```python
-import numpy as np
-from pathlib import Path
-import cv2
-
-def compute_dataset_stats(image_dir):
-    """Compute mean and std for a dataset."""
-    means = []
-    stds = []
-    
-    for img_path in Path(image_dir).glob("*.jpg"):
-        img = cv2.imread(str(img_path))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        img = img / 255.0
-        
-        means.append(np.mean(img, axis=(0, 1)))
-        stds.append(np.std(img, axis=(0, 1)))
-    
-    mean = np.mean(means, axis=0)
-    std = np.mean(stds, axis=0)
-    
-    return mean, std
-
-# Try this on different datasets:
-# - Medical images: expect very different values
-# - Artwork: higher saturation, different balance
-# - Underwater photos: blue-shifted dramatically
-# - Infrared images: completely different statistics
-```
-
-## Beyond Images: Normalization in Other Domains
+## Part V: Beyond Images 🏊‍♂️
+*Normalization in other domains*
 
 While we've focused on images, normalization is crucial across all deep learning domains:
 
@@ -786,204 +864,25 @@ X_normalized = scaler.fit_transform(X)
 
 The key difference from images: each feature (column) is normalized independently, not the entire sample.
 
-## The Normalization Prescription: What Should You Actually Do?
+### The Batch Normalization Connection
 
-After this journey through normalization history and theory, here's practical guidance:
-
-### For Fine-Tuning (99% of Use Cases)
-**Use the same normalization as the pretrained model. Always.** 
-- ImageNet pretrained? Use ImageNet stats: mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]
-- CLIP model? Use CLIP's normalization: mean=[0.48145466, 0.4578275, 0.40821073], std=[0.26862954, 0.26130258, 0.27577711]
-- ViT/Inception? Use their [-1, 1] scaling: `(image / 127.5) - 1`
-
-The first layer expects specific input distributions. Using different normalization won't break anything, but it adds unnecessary adaptation overhead.
-
-### For Training From Scratch (The Rare Case)
-1. **Start with [-1, 1] normalization**: `(img / 127.5) - 1` - gives you zero-centered data
-2. **If performance is poor**, compute and use dataset statistics
-3. **If robustness is critical**, experiment with per-image normalization
-4. **For non-natural images**, always compute domain-specific statistics
-
-### For Production Systems
-```python
-# Defensive normalization
-def normalize_safely(img, method="imagenet"):
-    """Production-ready normalization with safety checks."""
-    
-    # Ensure float32 to avoid precision issues
-    img = img.astype(np.float32)
-    
-    # Clip to valid range (defensive against bad inputs)
-    img = np.clip(img, 0, 255)
-    
-    if method == "imagenet":
-        mean = np.array([0.485, 0.456, 0.406]) * 255
-        std = np.array([0.229, 0.224, 0.225]) * 255
-    elif method == "inception":
-        return (img / 255.0 - 0.5) / 0.5
-    elif method == "yolo":
-        return img / 255.0
-    elif method == "per_image":
-        mean = np.mean(img, axis=(0, 1), keepdims=True)
-        std = np.std(img, axis=(0, 1), keepdims=True)
-        # Avoid division by zero
-        std = np.where(std < 1e-6, 1, std)
-    else:
-        raise ValueError(f"Unknown method: {method}")
-    
-    return (img - mean) / std
-```
-
-## Implementing Normalization in Albumentations
-
-Now let's see how to implement various normalization strategies using Albumentations:
+While our focus is input normalization, it's worth noting the beautiful parallel with batch normalization, introduced by Ioffe and Szegedy in 2015. Batch normalization applies the same principle — zero mean, unit variance — but to intermediate activations:
 
 ```python
-import albumentations as A
-import cv2
-import numpy as np
+# Input normalization (preprocessing)
+x_normalized = (x - mean_dataset) / std_dataset
 
-# 1. Standard ImageNet normalization
-transform_imagenet = A.Compose([
-    A.Normalize(
-        mean=(0.485, 0.456, 0.406),
-        std=(0.229, 0.224, 0.225),
-        max_pixel_value=255.0,
-    )
-])
-
-# 2. Inception-style normalization
-transform_inception = A.Compose([
-    A.Normalize(
-        mean=(0.5, 0.5, 0.5),
-        std=(0.5, 0.5, 0.5),
-        max_pixel_value=255.0,
-    )
-])
-
-# 3. YOLO-style normalization (just scaling)
-transform_yolo = A.Compose([
-    A.Normalize(
-        mean=(0, 0, 0),
-        std=(1, 1, 1),
-        max_pixel_value=255.0,
-    )
-])
-
-# 4. Per-image normalization (global stats)
-transform_per_image = A.Compose([
-    A.Normalize(normalization="image")
-])
-
-# 5. Per-channel normalization
-transform_per_channel = A.Compose([
-    A.Normalize(normalization="image_per_channel")
-])
-
-# 6. Min-max normalization
-transform_minmax = A.Compose([
-    A.Normalize(normalization="min_max")
-])
-
-# 7. Custom normalization with augmentation synergy
-# This demonstrates how normalization interacts with other augmentations
-transform_with_augmentation = A.Compose([
-    # Apply augmentations first
-    A.RandomBrightnessContrast(p=0.5),
-    A.RGBShift(p=0.5),
-    
-    # Then normalize - per-image norm makes the above augmentations
-    # even more effective by introducing additional variation
-    A.Normalize(normalization="image_per_channel")
-])
-
-# Example usage showing the effect
-def demonstrate_normalization(image_path):
-    """Show how different normalizations affect an image."""
-    img = cv2.imread(image_path)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    
-    methods = {
-        "Original": lambda x: x / 255.0,
-        "ImageNet": transform_imagenet,
-        "Inception": transform_inception,
-        "YOLO": transform_yolo,
-        "Per-Image": transform_per_image,
-        "Per-Channel": transform_per_channel,
-        "Min-Max": transform_minmax
-    }
-    
-    results = {}
-    for name, transform in methods.items():
-        if name == "Original":
-            normalized = transform(img)
-        else:
-            normalized = transform(image=img)["image"]
-        
-        results[name] = {
-            "image": normalized,
-            "mean": np.mean(normalized),
-            "std": np.std(normalized),
-            "min": np.min(normalized),
-            "max": np.max(normalized)
-        }
-        
-        print(f"{name:12} - Mean: {results[name]['mean']:7.3f}, "
-              f"Std: {results[name]['std']:7.3f}, "
-              f"Range: [{results[name]['min']:7.3f}, {results[name]['max']:7.3f}]")
-    
-    return results
-
-# Advanced: Creating custom normalization for specific domains
-class DomainSpecificNormalize(A.ImageOnlyTransform):
-    """Custom normalization for specific imaging domains."""
-    
-    def __init__(self, domain="medical", p=1.0):
-        super().__init__(p=p)
-        self.domain = domain
-        
-        # Domain-specific statistics (examples)
-        self.stats = {
-            "medical": {"mean": [0.5], "std": [0.25]},  # Grayscale medical
-            "satellite": {"mean": [0.3, 0.4, 0.3], "std": [0.2, 0.2, 0.2]},
-            "infrared": {"mean": [0.6], "std": [0.3]},
-            "underwater": {"mean": [0.2, 0.3, 0.4], "std": [0.15, 0.15, 0.2]}
-        }
-    
-    def apply(self, img, **params):
-        stats = self.stats.get(self.domain, {"mean": [0.5], "std": [0.25]})
-        mean = np.array(stats["mean"]) * 255
-        std = np.array(stats["std"]) * 255
-        
-        # Handle both grayscale and color images
-        if len(img.shape) == 2:
-            mean = mean[0]
-            std = std[0]
-        elif len(mean) == 1 and len(img.shape) == 3:
-            mean = np.array([mean[0]] * 3)
-            std = np.array([std[0]] * 3)
-            
-        return (img.astype(np.float32) - mean) / std
-
-# Using custom normalization
-transform_medical = A.Compose([
-    DomainSpecificNormalize(domain="medical")
-])
+# Batch normalization (during forward pass)
+h_normalized = (h - mean_batch) / std_batch
 ```
 
-## The Philosophical Depth: What Is Normalization Really Doing?
+The similarity isn't coincidental. Both techniques address the same fundamental problem: keeping values in a range where gradients flow efficiently. Input normalization handles it at the entrance; batch normalization maintains it throughout the network.
 
-At its core, normalization is about creating a common language between data and model. When normalizing, we're essentially agreeing that 'middle gray' is zero, 'one unit of variation' is this much, and everything else is measured relative to these anchors.
-
-It's analogous to how we can only meaningfully compare temperatures if we agree on a scale. 40°C is hot for weather but cold for coffee — the number alone means nothing without context. Normalization provides that context.
-
-But there's a deeper truth: normalization is about symmetry. Neural networks with symmetric activation functions (like tanh) work best with symmetric inputs. Even ReLU, which isn't symmetric, benefits from having both positive and negative inputs because it allows the network to easily learn both excitatory and inhibitory features.
-
-## The Future of Normalization
+### The Future of Normalization
 
 As we enter the era of foundation models and massive datasets, normalization is evolving:
 
-### Learned Normalization
+#### Learned Normalization
 Some recent models learn their normalization parameters during training:
 ```python
 # Learnable normalization parameters
@@ -991,7 +890,7 @@ self.norm_mean = nn.Parameter(torch.zeros(3))
 self.norm_std = nn.Parameter(torch.ones(3))
 ```
 
-### Adaptive Normalization
+#### Adaptive Normalization
 Models that adjust normalization based on input domain:
 ```python
 # Detect domain and apply appropriate normalization
@@ -1001,7 +900,7 @@ elif is_natural_image(img):
     normalize = imagenet_normalize
 ```
 
-### Instance-Specific Normalization
+#### Instance-Specific Normalization
 Going beyond per-image to per-region normalization:
 ```python
 # Normalize different regions differently
@@ -1009,7 +908,20 @@ for region in detect_regions(img):
     region_normalized = normalize_adaptively(region)
 ```
 
-## The Alchemy of Deep Learning
+---
+
+## Part VI: The Philosophy 🏊‍♂️🏊‍♂️🏊‍♂️
+*What normalization really means*
+
+### The Philosophical Depth: What Is Normalization Really Doing?
+
+At its core, normalization is about creating a common language between data and model. When normalizing, we're essentially agreeing that 'middle gray' is zero, 'one unit of variation' is this much, and everything else is measured relative to these anchors.
+
+It's analogous to how we can only meaningfully compare temperatures if we agree on a scale. 40°C is hot for weather but cold for coffee — the number alone means nothing without context. Normalization provides that context.
+
+But there's a deeper truth: normalization is about symmetry. Neural networks with symmetric activation functions (like tanh) work best with symmetric inputs. Even ReLU, which isn't symmetric, benefits from having both positive and negative inputs because it allows the network to easily learn both excitatory and inhibitory features.
+
+### The Alchemy of Deep Learning
 
 In medieval times, alchemists discovered that mixing willow bark tea helped with headaches, that certain molds prevented wound infections, and that mercury compounds could treat syphilis. They had no idea why — no understanding of aspirin's anti-inflammatory properties, penicillin's disruption of bacterial cell walls, or antimicrobial mechanisms. But the remedies worked, so they used them.
 
@@ -1017,7 +929,7 @@ Alexander Fleming discovered penicillin in 1928 when mold contaminated his bacte
 
 Deep learning normalization is our modern alchemy. We know empirically that subtracting `[0.485, 0.456, 0.406]` and dividing by `[0.229, 0.224, 0.225]` helps neural networks converge. We have mathematical proofs for toy problems, plausible explanations for simple cases, and countless empirical successes. But for the deep networks we actually use? We're like Fleming in 1928 — we know it works, we use it everywhere, but we don't really understand why.
 
-## Conclusion: The Pragmatic Truth About Normalization
+### The Pragmatic Truth About Normalization
 
 After this deep dive, here's what we've learned:
 
@@ -1031,7 +943,7 @@ After this deep dive, here's what we've learned:
 
 5. **Engineering considerations are valid** — Numerical stability, hardware compatibility, and ease of use are legitimate reasons to adopt practices, even without complete theoretical justification.
 
-## Epilogue: Those Magic Numbers Revisited
+### Epilogue: Those Magic Numbers Revisited
 
 So the next time you type those magic numbers — `[0.485, 0.456, 0.406]` — you can appreciate them for what they are: empirically derived values that have proven their worth across millions of experiments. They're not universal constants, but they're not arbitrary either.
 
@@ -1043,150 +955,3 @@ The story of normalization reflects the broader story of deep learning:
 This combination — theory, empiricism, and engineering — has driven remarkable progress. We may not fully understand why normalization helps modern networks, but we've learned enough to use it effectively, to know when to adapt it, and to continue searching for deeper understanding.
 
 The gap between what we can prove and what works isn't a weakness — it's an opportunity for future discovery.
-
-## Code Appendix: A Complete Normalization Toolkit
-
-Here's a comprehensive implementation showing all normalization techniques discussed:
-
-```python
-import albumentations as A
-import numpy as np
-from typing import Tuple, Optional, Literal
-
-class NormalizationToolkit:
-    """Complete toolkit for all normalization strategies."""
-    
-    @staticmethod
-    def get_normalizer(
-        method: Literal["imagenet", "inception", "yolo", "per_image", 
-                       "per_channel", "min_max", "custom"],
-        custom_stats: Optional[Tuple[list, list]] = None
-    ) -> A.Normalize:
-        """
-        Get appropriate normalizer based on method.
-        
-        Args:
-            method: Normalization method to use
-            custom_stats: (mean, std) for custom normalization
-            
-        Returns:
-            Albumentations Normalize transform
-        """
-        
-        configs = {
-            "imagenet": {
-                "mean": (0.485, 0.456, 0.406),
-                "std": (0.229, 0.224, 0.225),
-                "max_pixel_value": 255.0
-            },
-            "inception": {
-                "mean": (0.5, 0.5, 0.5),
-                "std": (0.5, 0.5, 0.5),
-                "max_pixel_value": 255.0
-            },
-            "yolo": {
-                "mean": (0, 0, 0),
-                "std": (1, 1, 1),
-                "max_pixel_value": 255.0
-            },
-            "per_image": {
-                "normalization": "image"
-            },
-            "per_channel": {
-                "normalization": "image_per_channel"
-            },
-            "min_max": {
-                "normalization": "min_max"
-            }
-        }
-        
-        if method == "custom":
-            if custom_stats is None:
-                raise ValueError("custom_stats required for custom normalization")
-            return A.Normalize(
-                mean=custom_stats[0],
-                std=custom_stats[1],
-                max_pixel_value=255.0
-            )
-        
-        return A.Normalize(**configs[method])
-    
-    @staticmethod
-    def compute_dataset_statistics(
-        dataset_loader,
-        num_samples: int = 1000
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Compute mean and std from a dataset.
-        
-        Args:
-            dataset_loader: Iterator yielding images
-            num_samples: Number of samples to use
-            
-        Returns:
-            (mean, std) as numpy arrays
-        """
-        means = []
-        stds = []
-        
-        for i, img in enumerate(dataset_loader):
-            if i >= num_samples:
-                break
-                
-            img = img.astype(np.float32) / 255.0
-            means.append(np.mean(img, axis=(0, 1)))
-            stds.append(np.std(img, axis=(0, 1)))
-        
-        return np.mean(means, axis=0), np.mean(stds, axis=0)
-    
-    @staticmethod
-    def analyze_normalization_effect(
-        img: np.ndarray,
-        normalizer: A.Normalize
-    ) -> dict:
-        """
-        Analyze the effect of normalization on an image.
-        
-        Args:
-            img: Input image
-            normalizer: Normalization transform
-            
-        Returns:
-            Dictionary with statistics
-        """
-        normalized = normalizer(image=img)["image"]
-        
-        return {
-            "original_range": (img.min(), img.max()),
-            "normalized_range": (normalized.min(), normalized.max()),
-            "original_mean": img.mean(axis=(0, 1)),
-            "normalized_mean": normalized.mean(axis=(0, 1)),
-            "original_std": img.std(axis=(0, 1)),
-            "normalized_std": normalized.std(axis=(0, 1)),
-            "information_preserved": np.corrcoef(
-                img.flatten(), 
-                normalized.flatten()
-            )[0, 1]
-        }
-
-# Example usage
-toolkit = NormalizationToolkit()
-
-# Get different normalizers
-imagenet_norm = toolkit.get_normalizer("imagenet")
-yolo_norm = toolkit.get_normalizer("yolo")
-per_image_norm = toolkit.get_normalizer("per_image")
-
-# Create a complete preprocessing pipeline
-preprocessing_pipeline = A.Compose([
-    A.Resize(224, 224),
-    A.HorizontalFlip(p=0.5),
-    A.RandomBrightnessContrast(p=0.2),
-    # Normalization comes last
-    toolkit.get_normalizer("imagenet")
-])
-
-print("Normalization toolkit ready for use!")
-```
-
-Remember: normalization isn't just a preprocessing step — it's the foundation upon which successful deep learning is built. Choose wisely, verify thoroughly, and may the gradients always flow smoothly.
