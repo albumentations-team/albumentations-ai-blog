@@ -7,7 +7,7 @@ permissions:
 
 on:
   pull_request:
-    types: [opened, synchronize, ready_for_review]
+    types: [opened]  # Only on first open, not on synchronize (pushes)
     paths:
       - 'posts/**/*.md'
       - 'authors/*.json'
@@ -17,7 +17,7 @@ on:
     types: [created]
 
 jobs:
-  # Automatic review on PR open/update
+  # Automatic review on PR open only
   auto-review:
     if: github.event_name == 'pull_request' && !github.event.pull_request.draft
     runs-on: ubuntu-latest
@@ -25,6 +25,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha }}  # Check out the PR branch, not main
           fetch-depth: 0  # Get full history for better context
 
       - name: Claude Blog Post Review
@@ -127,6 +128,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}  # Check out the latest commit
           fetch-depth: 0
 
       - name: Claude Manual Blog Review
