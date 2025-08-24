@@ -170,17 +170,17 @@ transform_minmax_per_channel = A.Compose([
 
 Imagine training a neural network in 1991 — before convolutional networks were popular. Images come straight from the camera: pixel values ranging from 0 to 255. Each input pixel has its own associated weight (fully connected layers were the norm). The weights are initialized with small random values of similar magnitude, say around 0.01, as was the custom.
 
-Quick notation reminder: we're optimizing weights `w` to minimize a loss function. The gradient `∂L/∂w` tells us how to adjust each weight. In gradient descent, we update weights proportionally to these gradients.
+Quick notation reminder: we're optimizing weights $w$ to minimize a loss function. The gradient $\frac{\partial L}{\partial w}$ tells us how to adjust each weight. In gradient descent, we update weights proportionally to these gradients.
 
 What happens when computing the first gradient? The gradient for each weight is:
 
-```
-∂L/∂w_i = x_i · δ
-```
+$$
+\frac{\partial L}{\partial w_i} = x_i \cdot \delta
+$$
 
-Where `x_i` is the input value and `δ` is the error signal backpropagated from the loss. Since all weights start with similar magnitudes, the gradient size is determined primarily by the input value `x_i`:
-- Dark pixels (near 0): `∂L/∂w ≈ 0 · δ ≈ 0` — almost no gradient!
-- Bright pixels (near 255): `∂L/∂w ≈ 255 · δ` — huge gradient!
+Where $x_i$ is the input value and $\delta$ is the error signal backpropagated from the loss. Since all weights start with similar magnitudes, the gradient size is determined primarily by the input value $x_i$:
+- Dark pixels (near 0): $\frac{\partial L}{\partial w} \approx 0 \cdot \delta \approx 0$ — almost no gradient!
+- Bright pixels (near 255): $\frac{\partial L}{\partial w} \approx 255 \cdot \delta$ — huge gradient!
 
 The neurons connected to bright pixels get massive updates while those connected to dark pixels barely change. The network doesn't learn uniformly — some features dominate while others are ignored entirely.
 
@@ -194,9 +194,9 @@ Consider two features with similar predictive power:
 - Age: typical value ~30, range [0, 100]
 - Annual income: typical value ~100,000, range [0, 1,000,000]
 
-If both have similar impact on the outcome, then after the model converges: `w₁ × 30 ≈ w₂ × 100,000`
+If both have similar impact on the outcome, then after the model converges: $w_1 \times 30 \approx w_2 \times 100,000$
 
-This means `w₁` ends up ~3,333 times larger than `w₂` just to compensate for the scale difference! Without normalization, you can't compare coefficient magnitudes to understand feature importance — a huge coefficient might just mean the feature has small values, not that it's important.
+This means $w_1$ ends up ~3,333 times larger than $w_2$ just to compensate for the scale difference! Without normalization, you can't compare coefficient magnitudes to understand feature importance — a huge coefficient might just mean the feature has small values, not that it's important.
 
 After normalizing both to `[0, 1]`, features with similar impact will have similar coefficient magnitudes. Now larger |w| actually means larger impact.
 
@@ -290,7 +290,7 @@ This is likely **not a coincidence**. Consider the timeline and context:
 
 Some researchers speculate that additional transformer mechanisms might help:
 - **LayerNorm at each layer** - but this doesn't eliminate the need for good initial scaling
-- **Scaled dot-product attention** - the `1/√d` factor provides some normalization, but softmax is NOT truly scale-invariant
+- **Scaled dot-product attention** - the $1/\sqrt{d}$ factor provides some normalization, but softmax is NOT truly scale-invariant
 
 The success of both Inception and ViTs with this simple normalization challenged a core assumption: that you need dataset-specific statistics (like ImageNet's means and stds). It suggests that **the exact normalization values matter less than having zero-centered data at a reasonable scale**.
 
@@ -305,70 +305,77 @@ But why does normalization work at all? What's the mathematical foundation that 
 
 Consider a simple linear neuron (the argument extends to nonlinear cases):
 
-```
-y = Σᵢ wᵢxᵢ + b
-```
+$$
+y = \sum_i w_i x_i + b
+$$
 
 Where:
-- `xᵢ` are the inputs
-- `wᵢ` are the weights  
-- `b` is the bias
-- `y` is the output
+- $x_i$ are the inputs
+- $w_i$ are the weights  
+- $b$ is the bias
+- $y$ is the output
 
-The error function is `E = ½(y - t)²` where `t` is the target.
+The error function is $E = \frac{1}{2}(y - t)^2$ where $t$ is the target.
 
 #### The Gradient Calculation
 
-The gradient of the error with respect to weight `wᵢ` is:
+The gradient of the error with respect to weight $w_i$ is:
 
-```
-∂E/∂wᵢ = ∂E/∂y · ∂y/∂wᵢ = (y - t) · xᵢ = δ · xᵢ
-```
+$$
+\frac{\partial E}{\partial w_i} = \frac{\partial E}{\partial y} \cdot \frac{\partial y}{\partial w_i} = (y - t) \cdot x_i = \delta \cdot x_i
+$$
 
-Where `δ = (y - t)` is the error signal.
+Where $\delta = (y - t)$ is the error signal.
 
-**Key Insight #1**: The gradient is proportional to the input value `xᵢ`.
+**Key Insight #1**: The gradient is proportional to the input value $x_i$.
 
 #### The Problem with Unnormalized Inputs
 
 Now, suppose inputs have different scales. Let's say:
-- `x₁` ranges from 0 to 1
-- `x₂` ranges from 0 to 1000
+- $x_1$ ranges from 0 to 1
+- $x_2$ ranges from 0 to 1000
 
-The weight updates using gradient descent with learning rate `η` are:
+The weight updates using gradient descent with learning rate $\eta$ are:
 
-```
-Δw₁ = -η · δ · x₁  (small changes, range: -η·δ to 0)
-Δw₂ = -η · δ · x₂  (huge changes, range: -1000η·δ to 0)
-```
+$$
+\begin{align}
+\Delta w_1 &= -\eta \cdot \delta \cdot x_1 \quad \text{(small changes, range: } -\eta\delta \text{ to 0)} \\
+\Delta w_2 &= -\eta \cdot \delta \cdot x_2 \quad \text{(huge changes, range: } -1000\eta\delta \text{ to 0)}
+\end{align}
+$$
 
 This creates two problems:
 
-1. **Different Convergence Speeds**: `w₂` changes 1000× faster than `w₁`
+1. **Different Convergence Speeds**: $w_2$ changes 1000× faster than $w_1$
 2. **Learning Rate Dilemma**: 
-   - If `η` is small enough for `w₂` to converge stably, `w₁` barely moves
-   - If `η` is large enough for `w₁` to learn quickly, `w₂` oscillates wildly
+   - If $\eta$ is small enough for $w_2$ to converge stably, $w_1$ barely moves
+   - If $\eta$ is large enough for $w_1$ to learn quickly, $w_2$ oscillates wildly
 
 #### The Hessian Matrix Analysis
 
 The second-order behavior is captured by the Hessian matrix. For our linear neuron, the Hessian is:
 
-```
-H = ∂²E/∂wᵢ∂wⱼ = E[xᵢxⱼ]
-```
+$$
+H = \frac{\partial^2 E}{\partial w_i \partial w_j} = E[x_i x_j]
+$$
 
-Where `E[·]` denotes expectation over the training set.
+Where $E[\cdot]$ denotes expectation over the training set.
 
 For unnormalized inputs, this becomes:
 
-```
-H = | E[x₁²]    E[x₁x₂]  |   =  | ~0.33    ~166.5  |
-    | E[x₂x₁]   E[x₂²]   |      | ~166.5   ~333333 |
-```
+$$
+H = \begin{bmatrix}
+E[x_1^2] & E[x_1 x_2] \\
+E[x_2 x_1] & E[x_2^2]
+\end{bmatrix} = \begin{bmatrix}
+\sim 0.33 & \sim 166.5 \\
+\sim 166.5 & \sim 333333
+\end{bmatrix}
+$$
 
 (Assuming uniform distributions for simplicity)
 
-The condition number (ratio of largest to smallest eigenvalue) is approximately 10⁶!
+The condition number (ratio of largest to smallest eigenvalue) is approximately $10^6$!
 
 #### What the Condition Number Means
 
@@ -382,9 +389,9 @@ The condition number determines the "elongation" of the error surface. With a co
 
 Now let's normalize to zero mean. For each input:
 
-```
-x̂ᵢ = xᵢ - E[xᵢ]
-```
+$$
+\hat{x}_i = x_i - E[x_i]
+$$
 
 This centering has an important side effect: it reduces the maximum absolute value by about half. For inputs in [0, 255] with mean ≈127.5:
 - Before: max |x| = 255
@@ -394,16 +401,21 @@ This 2× reduction in maximum gradient magnitude helps prevent gradient explosio
 
 The Hessian becomes:
 
-```
-H = E[x̂ᵢx̂ⱼ] = Cov(xᵢ, xⱼ)
-```
+$$
+H = E[\hat{x}_i \hat{x}_j] = \text{Cov}(x_i, x_j)
+$$
 
 This is the covariance matrix! For uncorrelated inputs:
 
-```
-H = | Var(x₁)    0        |   =  | σ₁²    0   |
-    | 0          Var(x₂)  |      | 0      σ₂² |
-```
+$$
+H = \begin{bmatrix}
+\text{Var}(x_1) & 0 \\
+0 & \text{Var}(x_2)
+\end{bmatrix} = \begin{bmatrix}
+\sigma_1^2 & 0 \\
+0 & \sigma_2^2
+\end{bmatrix}
+$$
 
 The matrix is now diagonal — the error surface axes align with the weight axes!
 
@@ -411,21 +423,23 @@ The matrix is now diagonal — the error surface axes align with the weight axes
 
 Scaling to unit variance:
 
-```
-x̃ᵢ = (xᵢ - E[xᵢ])/σᵢ
-```
+$$
+\tilde{x}_i = \frac{x_i - E[x_i]}{\sigma_i}
+$$
 
 Gives us:
 
-```
-H = | 1    0  |
-    | 0    1  |
-```
+$$
+H = \begin{bmatrix}
+1 & 0 \\
+0 & 1
+\end{bmatrix}
+$$
 
 The Hessian is now the identity matrix! This means:
 
 1. **Condition number = 1**: Perfectly spherical error surface
-2. **Optimal learning rate is the same for all weights**: `η_optimal = 1/λ_max = 1`
+2. **Optimal learning rate is the same for all weights**: $\eta_{\text{optimal}} = 1/\lambda_{\text{max}} = 1$
 3. **Convergence in one step for linear problems**: The gradient points directly at the minimum
 
 #### The Complete Mathematical Argument
@@ -435,34 +449,36 @@ LeCun's complete argument involves three transformations:
 **1. Centering (Zero Mean)**
 - Removes correlation between weights and biases
 - Decorrelates gradient components
-- Mathematical effect: `E[∂E/∂w · ∂E/∂b] = E[δ²·x] = 0` when `E[x] = 0`
+- Mathematical effect: $E[\frac{\partial E}{\partial w} \cdot \frac{\partial E}{\partial b}] = E[\delta^2 \cdot x] = 0$ when $E[x] = 0$
 
 **2. Decorrelation (Whitening)**
 - Diagonalizes the Hessian
 - Removes feature correlations
-- Mathematical effect: `E[xᵢxⱼ] = 0` for `i ≠ j`
+- Mathematical effect: $E[x_i x_j] = 0$ for $i \neq j$
 
 **3. Scaling (Unit Variance)**
 - Equalizes gradient magnitudes
 - Normalizes learning rates
-- Mathematical effect: `E[xᵢ²] = 1` for all `i`
+- Mathematical effect: $E[x_i^2] = 1$ for all $i$
 
 #### The Nonlinear Case
 
-For nonlinear activation functions `f`, the analysis is similar but includes the derivative:
+For nonlinear activation functions $f$, the analysis is similar but includes the derivative:
 
-```
-∂E/∂wᵢ = δ · f'(net) · xᵢ
-```
+$$
+\frac{\partial E}{\partial w_i} = \delta \cdot f'(\text{net}) \cdot x_i
+$$
 
-Where `net = Σwᵢxᵢ`. The key insight remains: input scale directly affects gradient scale.
+Where $\text{net} = \sum w_i x_i$. The key insight remains unchanged: input scale directly multiplies gradient magnitude, but now activation derivatives can amplify or diminish this effect.
 
-For sigmoid activations, there's an additional benefit. The sigmoid function `σ(x) = 1/(1+e^(-x))` has maximum derivative at `x = 0`:
+For sigmoid activations, there's an additional benefit. The sigmoid function $\sigma(x) = 1/(1+e^{-x})$ has maximum derivative at $x = 0$:
 
-```
-σ'(0) = 0.25 (maximum)
-σ'(±5) ≈ 0 (saturation)
-```
+$$
+\begin{align}
+\sigma'(0) &= 0.25 \quad \text{(maximum)} \\
+\sigma'(\pm 5) &\approx 0 \quad \text{(saturation)}
+\end{align}
+$$
 
 With zero-mean inputs and initialized-near-zero weights, we start in the high-gradient region!
 
@@ -513,38 +529,42 @@ Now for the uncomfortable truth that most papers gloss over: **this rigorous pro
 
 ##### 1. Non-Convex Loss Functions
 
-LeCun's proof assumes quadratic loss `E = ½(y - t)²`. For other losses:
+LeCun's proof assumes quadratic loss $E = \frac{1}{2}(y - t)^2$. For other losses:
 
 **Cross-Entropy Loss:**
-```
-L = -Σᵢ tᵢ log(yᵢ)
-∂L/∂wⱼ = -Σᵢ (tᵢ/yᵢ) · ∂yᵢ/∂wⱼ
-```
+$$
+\begin{align}
+L &= -\sum_i t_i \log(y_i) \\
+\frac{\partial L}{\partial w_j} &= -\sum_i \frac{t_i}{y_i} \cdot \frac{\partial y_i}{\partial w_j}
+\end{align}
+$$
 
 The gradient still depends on input scale, but the relationship is nonlinear through the softmax denominator. The Hessian becomes:
 
-```
-H = J^T · diag(p) · (I - pp^T) · J
-```
+$$
+H = J^T \cdot \text{diag}(p) \cdot (I - pp^T) \cdot J
+$$
 
-Where `J` is the Jacobian and `p` are the softmax probabilities. This is no longer simply `E[xᵢxⱼ]`!
+Where $J$ is the Jacobian and $p$ are the softmax probabilities. This is no longer simply $E[x_i x_j]$!
 
 **What we can say:** The mathematics no longer applies. We observe empirically that normalization helps, but have no theoretical justification.
 
 ##### 2. Deep Networks with Nonlinearities
 
 Consider a two-layer network:
-```
-h = f(W₁x + b₁)
-y = W₂h + b₂
-```
+$$
+\begin{align}
+h &= f(W_1 x + b_1) \\
+y &= W_2 h + b_2
+\end{align}
+$$
 
 The gradient with respect to first-layer weights becomes:
-```
-∂L/∂W₁ = (W₂^T · δ₂) ⊙ f'(W₁x) · x^T
-```
+$$
+\frac{\partial L}{\partial W_1} = (W_2^T \cdot \delta_2) \odot f'(W_1 x) \cdot x^T
+$$
 
-Where `⊙` is element-wise multiplication. The input scale still affects gradients through `x^T`, but now:
+Where $\odot$ is element-wise multiplication. The input scale still affects gradients through $x^T$, but now:
 - **We cannot track the Hessian analytically** through the nonlinearities
 - **The condition number argument no longer applies directly**
 - **This is actually the motivation for batch normalization**, not input normalization
@@ -554,9 +574,9 @@ Important: The "covariate shift" argument often cited for deep networks is about
 ##### 3. Convolutional Layers
 
 For convolutions, the weight gradient is:
-```
-∂L/∂W_kernel = Σ_locations δ ⊗ x_patch
-```
+$$
+\frac{\partial L}{\partial W_{\text{kernel}}} = \sum_{\text{locations}} \delta \otimes x_{\text{patch}}
+$$
 
 The summation over spatial locations creates complex dynamics. The same kernel weight encounters both bright (255) and dark (0) pixels across different spatial positions. 
 
@@ -567,14 +587,14 @@ An open research question: In CNNs without batch normalization trained on [0, 25
 ##### 4. Transformers and Attention
 
 For self-attention:
-```
-Attention(Q,K,V) = softmax(QK^T/√d)V
-```
+$$
+\text{Attention}(Q,K,V) = \text{softmax}\left(\frac{QK^T}{\sqrt{d}}\right)V
+$$
 
 The gradients involve:
-- **Quadratic interactions** through `QK^T`
+- **Quadratic interactions** through $QK^T$
 - **Softmax Jacobians** with complex dependencies
-- **Scaling factors** (`1/√d`) that already provide some normalization
+- **Scaling factors** ($1/\sqrt{d}$) that already provide some normalization
 
 Here, the original proof doesn't apply at all, yet we empirically observe that normalization helps. We don't know why.
 
@@ -587,20 +607,20 @@ We observe that normalization helps in practice, and we have several **hypothese
 1. **Local Linearity Hypothesis**: We *speculate* that networks might be approximately linear in small regions, making the linear analysis somewhat relevant. But we have no proof of this.
 
 2. **Gradient Cascade Hypothesis**: We understand the first-layer effect:
-   ```
-   ||∂L/∂W₁|| ∝ ||x|| · ||∂L/∂y₁||
-   ```
+   $$
+   \|\frac{\partial L}{\partial W_1}\| \propto \|x\| \cdot \|\frac{\partial L}{\partial y_1}\|
+   $$
    We *conjecture* that at initialization, large inputs might cascade through the network:
-   - Layer 1 output: `h₁ = f(W₁x)` — large if x is large
-   - Layer 2 input sees these large values: `h₂ = f(W₂h₁)`
+   - Layer 1 output: $h_1 = f(W_1 x)$ — large if x is large
+   - Layer 2 input sees these large values: $h_2 = f(W_2 h_1)$
    - Could propagate through all layers
    
    But this is just plausible reasoning, not a proof. Batch normalization could completely eliminate this effect by renormalizing at each layer. ReLU networks might clip the problem. LayerNorm in transformers handles it differently. We don't have rigorous analysis of how these interactions play out.
 
 3. **Initialization Compatibility**: Modern initialization schemes (Xavier, He) explicitly assume normalized inputs:
-   ```
-   Var(W) = 2/(n_in + n_out)  # Xavier assumes Var(x) = 1
-   ```
+   $$
+   \text{Var}(W) = \frac{2}{n_{\text{in}} + n_{\text{out}}} \quad \text{// Xavier assumes Var}(x) = 1
+   $$
    This at least explains why unnormalized inputs break these initialization schemes.
 
 #### What We Can Actually Claim
@@ -631,17 +651,19 @@ Here's what we can say with mathematical rigor:
 While we lack theoretical understanding, there are practical engineering reasons why normalization is useful:
 
 1. **Numerical Stability**: Prevents overflow/underflow in float32
-   ```
+   ```text
    exp(1000) → overflow
    exp(normalized) → manageable
    ```
 
 2. **Optimizer Assumptions**: Adam assumes roughly unit-scale gradients:
-   ```
-   m_t = β₁m_{t-1} + (1-β₁)g_t
-   v_t = β₂v_{t-1} + (1-β₂)g_t²
-   ```
-   With unnormalized inputs, `g_t²` varies by orders of magnitude.
+   $$
+   \begin{align}
+   m_t &= \beta_1 m_{t-1} + (1-\beta_1)g_t \\
+   v_t &= \beta_2 v_{t-1} + (1-\beta_2)g_t^2
+   \end{align}
+   $$
+   With unnormalized inputs, $g_t^2$ varies by orders of magnitude.
 
 3. **Hardware Efficiency**: Modern accelerators (TPUs, GPUs) optimize for normalized ranges:
    - Tensor cores assume certain input ranges
@@ -732,17 +754,19 @@ With per-image normalization:
 - Each crop has different local statistics (different mean/std)
 - The same object looks **different** to the network in each crop
 
-This difference is mathematically equivalent to applying brightness and contrast augmentation! If crop A has mean μ₁ and std σ₁, while crop B has mean μ₂ and std σ₂, then:
+This difference is mathematically equivalent to applying brightness and contrast augmentation! If crop A has mean $\mu_1$ and std $\sigma_1$, while crop B has mean $\mu_2$ and std $\sigma_2$, then:
 
-```
-normalized_A = (pixel - μ₁) / σ₁
-normalized_B = (pixel - μ₂) / σ₂
-```
+$$
+\begin{align}
+\text{normalized}_A &= \frac{\text{pixel} - \mu_1}{\sigma_1} \\
+\text{normalized}_B &= \frac{\text{pixel} - \mu_2}{\sigma_2}
+\end{align}
+$$
 
 The relationship between these is:
-```
-normalized_B = (σ₁/σ₂) * normalized_A + (μ₁/σ₂ - μ₂/σ₂)
-```
+$$
+\text{normalized}_B = \frac{\sigma_1}{\sigma_2} \cdot \text{normalized}_A + \left(\frac{\mu_1}{\sigma_2} - \frac{\mu_2}{\sigma_2}\right)
+$$
 
 This is exactly a brightness and contrast transformation! Per-image normalization effectively incorporates these augmentations implicitly, which might explain why it often improves model robustness in competitions where generalization is crucial.
 

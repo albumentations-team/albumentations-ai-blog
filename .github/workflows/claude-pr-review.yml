@@ -65,7 +65,11 @@ jobs:
                - Code examples follow best practices
                - Albumentations usage is correct and up-to-date
                - Image processing operations are properly explained
-               - Mathematical notation is correct and consistent
+               - Mathematical notation uses LaTeX format:
+                 * Inline math: $formula$ not `formula`
+                 * Block math: $$formula$$ not ```math
+                 * Proper LaTeX commands (\frac, \partial, \sum, \sqrt, etc.)
+                 * Matrices use \begin{bmatrix}...\end{bmatrix}
 
             5. **Blog Post Standards**:
                - Proper YAML frontmatter (title, date, author, tags, categories, excerpt)
@@ -110,6 +114,8 @@ jobs:
             - Clear distinction between proven facts and empirical observations
             - Appropriate citations for academic claims
             - Code examples that readers can actually run
+            - LaTeX math is compatible with Next.js MDX rendering (remark-math + rehype-katex)
+            - All mathematical variables use proper LaTeX notation ($x_i$ not `xᵢ`)
 
   # Manual review trigger via @claude comment
   manual-review:
