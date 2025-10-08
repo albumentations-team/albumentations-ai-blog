@@ -12,7 +12,7 @@ tags:
   - face-landmarks
   - albumentationsx
   - deep-learning
-excerpt: ""
+excerpt: "When you flip a face horizontally, the left eye becomes the right eye - but your model doesn't know that. Learn how AlbumentationsX's label_mapping feature automatically swaps and reorders keypoint labels during augmentation, reducing landmark detection error by 33%."
 featured: false
 ---
 
