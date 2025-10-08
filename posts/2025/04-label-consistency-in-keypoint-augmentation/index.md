@@ -286,11 +286,9 @@ The label mapping feature in AlbumentationsX solves a subtle but important probl
 
 The experimental results demonstrate that:
 1. Proper label handling matters for model quality
-2. Augmentation significantly improves results (33% error reduction)
+2. Augmentation significantly improves results (21% error reduction)
 3. More augmentation requires longer training but is worth it
 4. Simple architectures with good augmentation can achieve competitive results
-
-The code is available at [repository link], including the full training script, visualization tools, and pretrained models.
 
 ## References
 
