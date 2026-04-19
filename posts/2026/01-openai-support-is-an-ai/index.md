@@ -12,6 +12,7 @@ tags:
   - customer-support
   - grants
 excerpt: "I applied to the Codex Open Source Fund for the Albumentations ecosystem, got an explicit approval email, hit an activation error, and opened a support ticket. The reply pattern made one thing clear: support at OpenAI is handled by an AI agent, and the agent reads like a 2021-era model — generic, no per-account verification, the same template across four rounds."
+image: images/hero.webp
 featured: false
 ---
 
