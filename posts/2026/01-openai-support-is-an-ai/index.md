@@ -39,7 +39,11 @@ I went looking for a way to report this and quickly noticed there is no self-ser
 - [An X post about the same](https://x.com/viglovikov/status/2042431024345612410).
 - Asked a friend at OpenAI to ping someone internally.
 
-Only after all of that did an email show up opening a support case (`07653765`, signed "Mayumi, OpenAI Support"). I do not know which of those channels actually triggered it. I replied expecting a human on the other end, asked progressively narrower questions ("was the benefit provisioned to my account, yes or no?"), and got progressively less specific answers. After four rounds it became clear I was talking to a model.
+Only after all of that did an email show up opening a support case (`07653765`, signed "Mayumi, OpenAI Support"). I do not know which of those channels actually triggered it. I replied expecting a human on the other end, asked progressively narrower questions ("was the benefit provisioned to my account, yes or no?"), and got progressively less specific answers. By round three the reply itself said the quiet part out loud:
+
+> Since this is **automatically reviewed by our system**, if no follow-up or activation details were provided beyond the initial message, it is most likely that the application did not result in an applied benefit for this account.
+
+So this isn't an inference from tone — the support channel told me directly that the process on the other side is automated.
 
 ## Who I Am / Why I Applied
 
@@ -90,6 +94,7 @@ What came back, across four rounds:
 - No per-account verification ("let me check whether this benefit was provisioned to your account") at any point.
 - No escalation, no handoff to a human, no "I cannot answer this and am routing you."
 - Each round the answers converged toward the same template instead of getting more specific. A current frontier model (including OpenAI's own) handles this kind of multi-turn narrowing without difficulty.
+- And in round three the reply itself said: *"this is automatically reviewed by our system"* — i.e., the channel itself disclosed it's automated. So the "is this an AI?" question isn't even speculative.
 
 The activation bug is a small thing. The support-loop pattern is the more interesting signal — and the more interesting question is whether anyone inside OpenAI is aware that the model deployed on the support channel feels two generations behind the ones the company sells.
 
