@@ -30,7 +30,16 @@ The activation flow then said the promotion was not available for my plan.
 
 ![Promo Unavailable modal — "Looks like this promotion is not available for your plan."](images/promo-unavailable.webp)
 
-I opened a support ticket expecting a human, asked progressively narrower questions ("was the benefit provisioned to my account, yes or no?"), and got progressively less specific answers. After four rounds it became clear I was talking to a model.
+I went looking for a way to report this and quickly noticed there is no self-serve "open a support ticket" flow for this kind of issue. So I tried every other channel I could think of:
+
+- The chatbot on the OpenAI website — it stopped responding mid-conversation.
+- The OpenAI Discord — asked there.
+- X — pinged OpenAI employees who looked relevant: [@embirico](https://x.com/embirico), [@reach_vb](https://x.com/reach_vb), [@thsottiaux](https://x.com/thsottiaux), [@romainhuet](https://x.com/romainhuet).
+- [A LinkedIn post asking who the right person to contact was](https://www.linkedin.com/feed/update/urn:li:activity:7448196634921918464/).
+- [An X post about the same](https://x.com/viglovikov/status/2042431024345612410).
+- Asked a friend at OpenAI to ping someone internally.
+
+Only after all of that did an email show up opening a support case (`07653765`, signed "Mayumi, OpenAI Support"). I do not know which of those channels actually triggered it. I replied expecting a human on the other end, asked progressively narrower questions ("was the benefit provisioned to my account, yes or no?"), and got progressively less specific answers. After four rounds it became clear I was talking to a model.
 
 ## Who I Am / Why I Applied
 
@@ -60,14 +69,15 @@ So two questions sit on top of the activation issue:
 - **Early March 2026** — applied via [openai.com/form/codex-open-source-fund/](https://openai.com/form/codex-open-source-fund/).
 - **About 1 month of silence.** Asked a friend at OpenAI to ping internally.
 - **April ~12** — received the approval email: "You're in. As part of Codex for Open Source, we're offering you 6 months of ChatGPT Pro on us." Button: "Activate 6 months of Pro."
-- **Same day** — clicking the button opened a modal: "Promo Unavailable. Looks like this promotion is not available for your plan."
-- **April 13–17** — support thread (case `07653765`), signed "Mayumi, OpenAI Support". Response patterns strongly suggest an AI agent, not a human.
-- **In parallel**, attempts to find a human:
+- **Same day** — clicking the button opened a modal: "Promo Unavailable. Looks like this promotion is not available for your plan." No self-serve ticket flow available for this kind of issue.
+- **Next ~24 hours** — tried every channel I could find to reach a human:
   - OpenAI website chatbot — stops responding mid-conversation.
   - OpenAI Discord — asked there.
   - X — pinged [@embirico](https://x.com/embirico), [@reach_vb](https://x.com/reach_vb), [@thsottiaux](https://x.com/thsottiaux), [@romainhuet](https://x.com/romainhuet).
   - [LinkedIn post asking for the right person to contact](https://www.linkedin.com/feed/update/urn:li:activity:7448196634921918464/).
   - [X post about the same](https://x.com/viglovikov/status/2042431024345612410).
+  - Asked the same friend at OpenAI to ping someone internally again.
+- **April 13–17** — an email arrived opening case `07653765`, signed "Mayumi, OpenAI Support". I do not know which of the channels above caused it to be opened. Response patterns across four rounds strongly suggest an AI agent, not a human.
 
 ## What the Support Model Actually Did
 
