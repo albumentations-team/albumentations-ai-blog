@@ -55,7 +55,7 @@ I applied to the Codex Open Source Fund for support of this ecosystem.
 
 The fund's public description on [openai.com/form/codex-open-source-fund/](https://openai.com/form/codex-open-source-fund/):
 
-![Codex open source fund landing page — "We're excited to launch a \$1 million initiative... grants up to \$25,000 in API credits."](images/fund-landing-page.webp)
+![Codex Open Source Fund landing page — "We're excited to launch a \$1 million initiative... grants up to \$25,000 in API credits."](images/fund-landing-page.webp)
 
 > We're excited to launch a \$1 million initiative supporting open source projects to use Codex CLI and OpenAI models. Applications will be reviewed on an ongoing basis, with projects receiving grants up to **\$25,000 in API credits**.
 
