@@ -107,4 +107,3 @@ import albumentations as A
 - [Pricing](https://albumentations.ai/pricing) for commercial licenses
 - [Discord](https://discord.gg/albumentations) for questions
 - [Newsletter](https://albumentations.ai/newsletter) for updates
-

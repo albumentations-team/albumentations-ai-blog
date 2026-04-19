@@ -257,4 +257,3 @@ From Floyd-Steinberg's organic patterns to Atkinson's high-contrast aesthetic, f
 - Meisenbach, G. (1882). German patent for autotype halftone process.
 - Pope, L. (2018). "Return of the Obra Dinn". *Game Developer's Conference* presentation on 1-bit rendering.
 - Ulichney, R. (1987). "Digital Halftoning". *MIT Press*.
-

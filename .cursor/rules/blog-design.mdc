@@ -1,6 +1,6 @@
 ---
-description: 
-globs: 
+description:
+globs:
 alwaysApply: true
 ---
 # Albumentations Blog Design Document
@@ -49,11 +49,11 @@ The Albumentations blog serves as the primary channel for:
   ::field{name="Location" type="string"}
     `posts/{year}/{slug}/index.md`
   ::
-  
+
   ::field{name="Format" type="string"}
     Markdown with YAML frontmatter
   ::
-  
+
   ::field{name="Images" type="string"}
     Stored in `./images/` relative to post
   ::
@@ -118,7 +118,7 @@ redirectFrom: string[] # Legacy URLs
 
 ### Categories
 - `announcements` - Official news and releases
-- `tutorials` - How-to guides and examples  
+- `tutorials` - How-to guides and examples
 - `performance` - Benchmarks and optimization
 - `community` - Community contributions
 
