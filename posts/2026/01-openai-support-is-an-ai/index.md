@@ -22,7 +22,15 @@ Support tickets at OpenAI are handled by an AI agent, not a person — and the a
 
 ## How I Noticed
 
-I applied to the [Codex Open Source Fund](https://openai.com/form/codex-open-source-fund/) for the [Albumentations](https://albumentations.ai) ecosystem. I received an explicit approval email — "You're in" — offering 6 months of ChatGPT Pro. The activation flow then said the promotion was not available for my plan. I opened a support ticket expecting a human, asked progressively narrower questions ("was the benefit provisioned to my account, yes or no?"), and got progressively less specific answers. After four rounds it became clear I was talking to a model.
+I applied to the [Codex Open Source Fund](https://openai.com/form/codex-open-source-fund/) for the [Albumentations](https://albumentations.ai) ecosystem. I received an explicit approval email — "You're in" — offering 6 months of ChatGPT Pro.
+
+![Approval email — "You're in. 6 months of ChatGPT Pro."](images/approval-email.webp)
+
+The activation flow then said the promotion was not available for my plan.
+
+![Promo Unavailable modal — "Looks like this promotion is not available for your plan."](images/promo-unavailable.webp)
+
+I opened a support ticket expecting a human, asked progressively narrower questions ("was the benefit provisioned to my account, yes or no?"), and got progressively less specific answers. After four rounds it became clear I was talking to a model.
 
 ## Who I Am / Why I Applied
 
@@ -33,6 +41,8 @@ I applied to the Codex Open Source Fund for support of this ecosystem.
 ## What the Fund Advertised vs What Was Offered
 
 The fund's public description on [openai.com/form/codex-open-source-fund/](https://openai.com/form/codex-open-source-fund/):
+
+![Codex open source fund landing page — "We're excited to launch a \$1 million initiative... grants up to \$25,000 in API credits."](images/fund-landing-page.webp)
 
 > We're excited to launch a \$1 million initiative supporting open source projects to use Codex CLI and OpenAI models. Applications will be reviewed on an ongoing basis, with projects receiving grants up to **\$25,000 in API credits**.
 
@@ -73,17 +83,7 @@ What came back, across four rounds:
 
 The activation bug is a small thing. The support-loop pattern is the more interesting signal — and the more interesting question is whether anyone inside OpenAI is aware that the model deployed on the support channel feels two generations behind the ones the company sells.
 
-## Proofs
-
-### The approval email
-
-![Approval email — "You're in. 6 months of ChatGPT Pro."](images/approval-email.webp)
-
-### The activation result
-
-![Promo Unavailable modal](images/promo-unavailable.webp)
-
-### The full support thread (case `07653765`)
+## The Full Support Thread (Case `07653765`)
 
 <details>
 <summary>Click to expand the full email exchange</summary>
