@@ -18,6 +18,7 @@ This is the technical blog for Albumentations.ai, focusing on computer vision, i
   - Use proper LaTeX commands: `\frac{}{}`, `\partial`, `\sum`, `\sqrt{}`, `\begin{bmatrix}`
   - All subscripts/superscripts: `$x_i$`, `$w_1$`, `$h^2$`
 - Mathematical content must be compatible with Next.js MDX rendering (remark-math + rehype-katex)
+- **ESCAPE literal `$` in prose** as `\$` whenever it is not math (`\$1 million`, `\$25,000`, `the \$PATH variable`). Two unescaped `$` on the same paragraph silently render the text between them as italic LaTeX. The pre-commit hook `markdown-dollar-sign-lint` (see `scripts/lint_markdown_dollars.py` and `.pre-commit-config.yaml`) catches the currency-shaped pattern. See `.cursor/rules/markdown-dollar-sign-escaping.mdc` for details.
 
 ### Writing Style
 - **Technical accuracy is paramount** - never compromise correctness for simplicity

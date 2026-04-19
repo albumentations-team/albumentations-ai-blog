@@ -34,7 +34,7 @@ I applied to the Codex Open Source Fund for support of this ecosystem.
 
 The fund's public description on [openai.com/form/codex-open-source-fund/](https://openai.com/form/codex-open-source-fund/):
 
-> We're excited to launch a $1 million initiative supporting open source projects to use Codex CLI and OpenAI models. Applications will be reviewed on an ongoing basis, with projects receiving grants up to **$25,000 in API credits**.
+> We're excited to launch a \$1 million initiative supporting open source projects to use Codex CLI and OpenAI models. Applications will be reviewed on an ongoing basis, with projects receiving grants up to **\$25,000 in API credits**.
 
 What the approval email actually offered: **6 months of ChatGPT Pro.** No mention of API credits.
 
@@ -112,7 +112,7 @@ The activation bug is a small thing. The support-loop pattern is the more intere
 >
 > Thank you for the reply. I think there may be a misunderstanding about which program I applied to.
 >
-> My application was for the Codex Open Source Fund at OpenAI, described as: "We're excited to launch a $1 million initiative supporting open source projects to use Codex CLI and OpenAI models. Applications will be reviewed on an ongoing basis, with projects receiving grants up to $25,000 in API credits."
+> My application was for the Codex Open Source Fund at OpenAI, described as: "We're excited to launch a \$1 million initiative supporting open source projects to use Codex CLI and OpenAI models. Applications will be reviewed on an ongoing basis, with projects receiving grants up to \$25,000 in API credits."
 >
 > This appears to be a separate open-source support program. In the fund description, I do not see any mention that it is limited to students or business users.
 >

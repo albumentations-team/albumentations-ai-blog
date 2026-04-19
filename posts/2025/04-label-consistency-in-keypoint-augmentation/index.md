@@ -296,5 +296,3 @@ The experimental results demonstrate that:
 - Albumentations Documentation: https://albumentations.ai
 - Segmentation Models PyTorch: https://github.com/qubvel/segmentation_models.pytorch
 - Wing Loss Paper: "Wing Loss for Robust Facial Landmark Localisation with Convolutional Neural Networks" (2018)
-
-

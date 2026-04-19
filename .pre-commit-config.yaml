@@ -1,0 +1,22 @@
+# Run with: pre-commit install   (one-time, per clone)
+# Manual run:  pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: '\.md$'  # markdown sometimes uses trailing spaces for line breaks
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=2000']
+
+  - repo: local
+    hooks:
+      - id: markdown-dollar-sign-lint
+        name: Markdown unescaped $ before digit (renders as LaTeX)
+        entry: python3 scripts/lint_markdown_dollars.py
+        language: system
+        types: [markdown]
+        pass_filenames: true

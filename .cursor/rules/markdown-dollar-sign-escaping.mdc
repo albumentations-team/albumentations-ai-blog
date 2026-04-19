@@ -1,0 +1,48 @@
+---
+description: Escape literal `$` in markdown posts so currency is not rendered as LaTeX. Triggered when editing files under posts/.
+globs: ["posts/**/*.md", "posts/**/*.mdx"]
+alwaysApply: false
+---
+
+# Escape Literal `$` in Blog Markdown
+
+The blog renders markdown through `remark-math` + `rehype-katex`. Any pair of `$...$` on the same paragraph is treated as inline math. Any pair of `$$...$$` is treated as a display-math block.
+
+This means literal currency like `$1 million` and `$25,000` will be silently rendered as one mangled italic LaTeX expression. The bug ships visually correct in the source file and only appears when the post is built.
+
+## The rule
+
+Whenever you write a `$` that is **not** intended as math, write `\$` instead.
+
+| Wrong (renders as math) | Correct (renders as text) |
+|---|---|
+| `$1 million initiative` | `\$1 million initiative` |
+| `$25,000 in API credits` | `\$25,000 in API credits` |
+| `costs $5 per request` | `costs \$5 per request` |
+| `the $PATH variable` | `the \$PATH variable` |
+
+LaTeX math itself stays unescaped:
+
+- Inline: `$1/\sqrt{d}$`, `$x_i$`, `$O(n \log n)$` — fine, this is real math.
+- Display: `$$\sum_{i=1}^{n} x_i$$` — fine, this is real math.
+
+## How violations are caught
+
+`scripts/lint_markdown_dollars.py` runs as a pre-commit hook (see `.pre-commit-config.yaml`). It flags any unescaped `$` immediately followed by a digit and then a non-math character (whitespace, comma, period, or letter). It does not flag `$1/\sqrt{d}$` or `$10^6$` because the next character after the digit is part of a math expression.
+
+Run manually:
+
+```bash
+python3 scripts/lint_markdown_dollars.py
+# or
+pre-commit run markdown-dollar-sign-lint --all-files
+```
+
+## Opt-out
+
+If you genuinely need `$<digit>` to be currency on a line that the linter wrongly flags, append the marker `<!-- lint-allow-dollar -->` on the same line. Use sparingly — escaping with `\$` is almost always the right answer.
+
+## Related
+
+- The same hook config also runs trailing-whitespace, end-of-file-fixer, check-yaml, and check-merge-conflict from `pre-commit-hooks`. Install once per clone with `pre-commit install`.
+- Format-on-save is disabled for `*.md` and `*.mdx` in `.vscode/settings.json` to prevent Prettier from corrupting frontmatter and stripping inline link / image / `<details>` markdown.
