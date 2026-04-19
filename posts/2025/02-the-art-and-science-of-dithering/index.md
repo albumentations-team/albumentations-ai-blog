@@ -56,6 +56,7 @@ Robert W. Floyd was a computer scientist at Stanford, known for his work on algo
 Their insight was deceptively simple yet profound. When you're forced to round a pixel to black or white, you create an error - the difference between what the pixel should be and what you made it. Instead of throwing this error away, why not give it to the neighboring pixels?
 
 Here's how it works: Imagine you have a pixel that should be 40% gray, but you can only make it black (0%) or white (100%). You choose black, but now you have an error of 40%. The Floyd-Steinberg algorithm takes this error and distributes it:
+
 - 7/16 of it goes to the pixel on the right
 - 3/16 goes to the pixel below and to the left
 - 5/16 goes to the pixel directly below
@@ -82,6 +83,7 @@ While error diffusion algorithms like Floyd-Steinberg created beautiful, organic
 Enter Bryce Bayer, a scientist at Eastman Kodak. In 1973, Bayer developed a different approach: instead of diffusing errors, use a fixed pattern - a matrix - to decide which pixels become black and which become white.
 
 The Bayer matrix is a thing of mathematical beauty. The smallest version is just 2×2:
+
 ```
 0 2
 3 1
@@ -160,6 +162,7 @@ Want to see these algorithms in action? We've created an interactive tool where 
 Upload any image and watch as Floyd-Steinberg creates organic patterns, Atkinson brightens your photos with that classic Mac aesthetic, or ordered dithering adds those distinctive crosshatch patterns. You can adjust the number of colors, switch between algorithms, and see the results instantly.
 
 Perfect test images to try:
+
 - **Portraits**: Show how error diffusion preserves facial features while ordered dithering creates artistic effects
 - **Sunsets/landscapes**: Demonstrate how different algorithms handle smooth gradients
 - **Architecture**: Reveal how fine details are preserved or transformed
@@ -254,3 +257,4 @@ From Floyd-Steinberg's organic patterns to Atkinson's high-contrast aesthetic, f
 - Meisenbach, G. (1882). German patent for autotype halftone process.
 - Pope, L. (2018). "Return of the Obra Dinn". *Game Developer's Conference* presentation on 1-bit rendering.
 - Ulichney, R. (1987). "Digital Halftoning". *MIT Press*.
+

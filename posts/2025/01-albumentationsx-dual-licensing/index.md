@@ -44,12 +44,13 @@ I haven't been able to make the donation model work for this project. Part of th
 3. **Purchase a commercial license** - Use AlbumentationsX without open-source restrictions
 
 > ⚠️ **AGPL Reminder**
-> 
+>
 > AGPL is a viral license. If your project uses MIT, Apache 2.0, or BSD — even if it's open source — you cannot use AlbumentationsX under AGPL. You need a commercial license.
 
 ### Understanding AGPL
 
 AGPL extends GPL to network services. What this means:
+
 - If you use AGPL software in a web service, you must make your source code available to users
 - If you modify the code, you must share those modifications
 - Your entire project must be AGPL-licensed (viral license)
@@ -57,30 +58,34 @@ AGPL extends GPL to network services. What this means:
 
 ### Real-World Examples
 
-| Your Situation | What You Need |
-|---|---|
-| Research paper with AGPL code | AlbumentationsX with AGPL ✓ |
-| Research paper with MIT/Apache code | Commercial license required |
-| Open-source project with MIT license | Commercial license required |
-| Company's proprietary ML pipeline | Commercial license required |
-| Personal project, not sharing code | Commercial license required |
-| Web service using the library | Commercial license (unless AGPL) |
+
+| Your Situation                       | What You Need                    |
+| ------------------------------------ | -------------------------------- |
+| Research paper with AGPL code        | AlbumentationsX with AGPL ✓      |
+| Research paper with MIT/Apache code  | Commercial license required      |
+| Open-source project with MIT license | Commercial license required      |
+| Company's proprietary ML pipeline    | Commercial license required      |
+| Personal project, not sharing code   | Commercial license required      |
+| Web service using the library        | Commercial license (unless AGPL) |
+
 
 ### Quick Comparison
 
-| | albumentations (original) | AlbumentationsX |
-|---|---|---|
-| **License** | MIT | Dual: AGPL / Commercial |
-| **Active maintenance** | No | Yes |
-| **New features** | No | Yes |
-| **Bug fixes** | No | Yes |
-| **Python support** | 3.9-3.13 | 3.9+ with active updates |
-| **Code changes required** | - | None |
+
+|                           | albumentations (original) | AlbumentationsX          |
+| ------------------------- | ------------------------- | ------------------------ |
+| **License**               | MIT                       | Dual: AGPL / Commercial  |
+| **Active maintenance**    | No                        | Yes                      |
+| **New features**          | No                        | Yes                      |
+| **Bug fixes**             | No                        | Yes                      |
+| **Python support**        | 3.9-3.13                  | 3.9+ with active updates |
+| **Code changes required** | -                         | None                     |
+
 
 ## How to Switch
 
 > ✅ **Good News**
-> 
+>
 > AlbumentationsX is a 100% drop-in replacement. Zero code changes required.
 
 If you decide to use AlbumentationsX:
@@ -101,4 +106,5 @@ import albumentations as A
 
 - [Pricing](https://albumentations.ai/pricing) for commercial licenses
 - [Discord](https://discord.gg/albumentations) for questions
-- [Newsletter](https://albumentations.ai/newsletter) for updates 
+- [Newsletter](https://albumentations.ai/newsletter) for updates
+
