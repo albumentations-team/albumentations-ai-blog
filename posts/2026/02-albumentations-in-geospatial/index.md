@@ -1,28 +1,26 @@
 ---
-
-## title: "Albumentations in Geospatial: Who Actually Uses It"
-
+title: "Albumentations in Geospatial: Who Actually Uses It"
 date: 2026-04-22
 author: vladimir-iglovikov
 categories:
-
-- community
+  - community
 tags:
-- geospatial
-- remote-sensing
-- satellite-imagery
-- earth-observation
-- multispectral
-- adoption
-excerpt: "Reproducible audit of who uses Albumentations in the satellite / remote-sensing ecosystem: 5 OSS geo libraries (raster-vision, solaris, terratorch, NASA/IBM Prithvi, GeoSeg) depend on it, 44 public repos across 19 named geo organizations import it (NASA, IBM, Microsoft, AWS, DLR, JPL, Satellogic, Development Seed, Allen AI, Radiant Earth, Global Fishing Watch, World Resources Institute), and 382 geospatial papers cite it."
+  - geospatial
+  - remote-sensing
+  - satellite-imagery
+  - earth-observation
+  - multispectral
+  - adoption
+excerpt: "Reproducible audit of who uses Albumentations in the satellite / remote-sensing ecosystem: 5 OSS geo libraries (raster-vision, solaris, TerraTorch, NASA/IBM Prithvi, GeoSeg) depend on it, 44 public repos across 19 named geo organizations import it (NASA, IBM, Microsoft, AWS, DLR, JPL, Satellogic, Development Seed, Allen AI, Radiant Earth, Global Fishing Watch, World Resources Institute), and 382 geospatial papers cite it."
 image: images/hero.webp
 featured: false
+---
 
 # Albumentations in Geospatial: Who Actually Uses It
 
 Albumentations is infrastructure in the satellite / remote-sensing ecosystem, not a research curio. This post is the receipts: which named organizations import it, which OSS geo libraries declare it as a direct dependency, how many papers cite it, and how that adoption has grown year over year.
 
-All numbers below are reproducible from public APIs (GitHub Code Search, OpenAlex, HuggingFace Hub, project packaging files). Methodology and scripts live in `[src/geo_evidence/](https://github.com/albumentations-team)` — the headline grep for the org-scoped pass is literally `org:<name> "import albumentations"`.
+All numbers below are reproducible from public APIs: [OpenAlex](https://openalex.org/) (citations), [GitHub](https://github.com/) Code Search (org-scoped `import` queries), the [Hugging Face Hub](https://huggingface.co/) (tagged model cards), and root-level packaging files (`requirements.txt`, `pyproject.toml`, etc.) in each OSS repo. The headline org-scoped grep is `org:<name> "import albumentations"`.
 
 ## Headline
 
@@ -78,7 +76,7 @@ These are repository-rooted facts — the dependency is declared in `pyproject.t
 | ------------------- | --------------------------- | --------------------------------------------- | --------------------------------------------------------------------------- |
 | **raster-vision**   | Azavea / Element 84         | `requirements.txt`                            | [azavea/raster-vision](https://github.com/azavea/raster-vision)             |
 | **solaris**         | CosmiQ / IQT                | `setup.py; requirements.txt; environment.yml` | [CosmiQ/solaris](https://github.com/CosmiQ/solaris)                         |
-| **terratorch**      | IBM Research                | `pyproject.toml`                              | [IBM/terratorch](https://github.com/IBM/terratorch)                         |
+| **TerraTorch**      | IBM Research                | `pyproject.toml`                              | [IBM/terratorch](https://github.com/IBM/terratorch)                       |
 | **prithvi-pytorch** | NASA / IBM                  | `requirements.txt`                            | [NASA-IMPACT/Prithvi-EO-2.0](https://github.com/NASA-IMPACT/Prithvi-EO-2.0) |
 | **GeoSeg**          | Academic (Wuhan University) | `requirements.txt`                            | [WangLibo1995/GeoSeg](https://github.com/WangLibo1995/GeoSeg)               |
 
@@ -208,6 +206,6 @@ If you maintain a geospatial OSS project, foundation model, or training pipeline
 
 ---
 
-*This brief is regenerated from public APIs by `[src/geo_evidence/](https://github.com/albumentations-team)`. All counts are reproducible. Last regenerated 2026-04-19.*
+*This brief is regenerated from the public APIs above. All counts are reproducible. Last regenerated 2026-04-19.*
 
-*Hero image: nine Albumentations 2.2.0 transforms applied to the same Sentinel-2 tile of Moorea (French Polynesia). Source tile: ESA / CNES, [Copernicus Sentinel-2 imagery, 21 June 2021](https://commons.wikimedia.org/wiki/File:Moorea_et_Tahiti_vues_par_Sentinel_2.jpg), CC BY-SA 3.0 IGO. Grid produced by `[images/build_hero.py](images/build_hero.py)`.*
+*Hero image: nine Albumentations 2.2.0 transforms applied to the same Sentinel-2 tile of Moorea (French Polynesia). Source tile: ESA / CNES, [Copernicus Sentinel-2 imagery, 21 June 2021](https://commons.wikimedia.org/wiki/File:Moorea_et_Tahiti_vues_par_Sentinel_2.jpg), CC BY-SA 3.0 IGO. Grid produced by [build_hero.py](images/build_hero.py).*

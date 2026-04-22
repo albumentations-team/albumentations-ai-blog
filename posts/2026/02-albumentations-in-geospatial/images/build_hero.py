@@ -19,7 +19,6 @@ import numpy as np
 HERE = Path(__file__).parent
 SRC = HERE / "moorea_source.jpg"
 OUT_WEBP = HERE / "hero.webp"
-OUT_PNG = HERE / "hero.png"
 
 CARD_SIZE = 1200
 GUTTER = 14
@@ -88,6 +87,7 @@ def build_transforms() -> list[tuple[str, A.BasicTransform]]:
 
 
 def main() -> None:
+    # Per-cell seeds only — each Compose has its own RNG; no global np.random state.
     rng = np.random.default_rng(42)
     tile = load_tile()
     transforms = build_transforms()
@@ -97,18 +97,16 @@ def main() -> None:
 
     for i, (_name, tfm) in enumerate(transforms):
         row, col = divmod(i, GRID)
-        # seed each transform deterministically
-        np.random.seed(int(rng.integers(0, 1_000_000)))
-        out = tfm(image=tile)["image"]
+        cell_seed = int(rng.integers(0, 2**32 - 1))
+        compose = A.Compose([tfm], p=1.0, seed=cell_seed)
+        out = compose(image=tile)["image"]
         if out.shape != (CELL, CELL, 3):
             out = cv2.resize(out, (CELL, CELL), interpolation=cv2.INTER_AREA)
         y = GUTTER + row * (CELL + GUTTER)
         x = GUTTER + col * (CELL + GUTTER)
         canvas[y : y + CELL, x : x + CELL] = out
 
-    cv2.imwrite(str(OUT_PNG), canvas, [cv2.IMWRITE_PNG_COMPRESSION, 6])
     cv2.imwrite(str(OUT_WEBP), canvas, [cv2.IMWRITE_WEBP_QUALITY, 88])
-    print(f"wrote {OUT_PNG} ({OUT_PNG.stat().st_size // 1024} KB)")
     print(f"wrote {OUT_WEBP} ({OUT_WEBP.stat().st_size // 1024} KB)")
 
 
