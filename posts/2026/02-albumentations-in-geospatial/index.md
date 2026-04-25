@@ -12,7 +12,7 @@ tags:
   - multispectral
   - adoption
 excerpt: "Reproducible audit of who uses Albumentations in the satellite / remote-sensing ecosystem: 5 OSS geo libraries (raster-vision, solaris, TerraTorch, NASA/IBM Prithvi, GeoSeg) depend on it, 44 public repos across 19 named geo organizations import it (NASA, IBM, Microsoft, AWS, DLR, JPL, Satellogic, Development Seed, Allen AI, Radiant Earth, Global Fishing Watch, World Resources Institute), and 382 geospatial papers cite it."
-image: images/hero.webp
+image: images/hero.jpg
 featured: false
 ---
 
@@ -50,9 +50,7 @@ mask = np.load("landcover_tile.npy")
 
 transform = A.Compose([
     A.RandomCrop(height=256, width=256),
-    A.HorizontalFlip(p=0.5),
-    A.VerticalFlip(p=0.5),
-    A.RandomRotate90(p=0.5),
+    A.SquareSymmetry(p=1.0),
     A.RandomBrightnessContrast(
         brightness_range=(-0.1, 0.1),
         contrast_range=(-0.1, 0.1),
@@ -64,6 +62,8 @@ transform = A.Compose([
 out = transform(image=image, mask=mask)
 tile, label = out["image"], out["mask"]
 ```
+
+`SquareSymmetry` samples one of the eight **D4** symmetries (four 90°-step rotations plus four reflections) in a single pass. Chaining `HorizontalFlip`, `VerticalFlip`, and `RandomRotate90` with independent `p` values does **not** yield a uniform distribution over those symmetries and costs three geometric ops per step instead of one.
 
 Same `Compose` would also accept `bboxes=...` and `keypoints=...` and keep them aligned.
 
