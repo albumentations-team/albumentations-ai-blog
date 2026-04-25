@@ -12,7 +12,7 @@ tags:
   - multispectral
   - adoption
 excerpt: "Reproducible audit of who uses Albumentations in the satellite / remote-sensing ecosystem: 5 OSS geo libraries (raster-vision, solaris, TerraTorch, NASA/IBM Prithvi, GeoSeg) depend on it, 44 public repos across 19 named geo organizations import it (NASA, IBM, Microsoft, AWS, DLR, JPL, Satellogic, Development Seed, Allen AI, Radiant Earth, Global Fishing Watch, World Resources Institute), and 382 geospatial papers cite it."
-image: images/hero.jpg
+image: images/hero.webp
 featured: false
 ---
 
