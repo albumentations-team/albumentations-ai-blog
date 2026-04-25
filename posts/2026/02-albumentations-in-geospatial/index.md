@@ -63,9 +63,9 @@ out = transform(image=image, mask=mask)
 tile, label = out["image"], out["mask"]
 ```
 
-`SquareSymmetry` samples one of the eight **D4** symmetries (four 90°-step rotations plus four reflections) in a single pass. Chaining `HorizontalFlip`, `VerticalFlip`, and `RandomRotate90` with independent `p` values does **not** yield a uniform distribution over those symmetries and costs three geometric ops per step instead of one.
+In order, that pipeline is [`RandomCrop`](https://explore.albumentations.ai/transform/RandomCrop) → [`SquareSymmetry`](https://explore.albumentations.ai/transform/SquareSymmetry) → [`RandomBrightnessContrast`](https://explore.albumentations.ai/transform/RandomBrightnessContrast) → [`GaussNoise`](https://explore.albumentations.ai/transform/GaussNoise). After the crop, [`SquareSymmetry`](https://explore.albumentations.ai/transform/SquareSymmetry) samples one of the eight **D4** symmetries (four 90°-step rotations plus four reflections) in a single pass. Chaining [`HorizontalFlip`](https://explore.albumentations.ai/transform/HorizontalFlip), [`VerticalFlip`](https://explore.albumentations.ai/transform/VerticalFlip), and [`RandomRotate90`](https://explore.albumentations.ai/transform/RandomRotate90) with independent `p` values does **not** yield a uniform distribution over those symmetries and costs three geometric ops per step instead of one.
 
-Same `Compose` would also accept `bboxes=...` and `keypoints=...` and keep them aligned.
+The same `Compose` pipeline would also accept `bboxes=...` and `keypoints=...` and keep them aligned.
 
 ## OSS Geospatial Libraries That Depend on Albumentations
 
@@ -208,4 +208,4 @@ If you maintain a geospatial OSS project, foundation model, or training pipeline
 
 *This brief is regenerated from the public APIs above. All counts are reproducible. Last regenerated 2026-04-19.*
 
-*Hero image: nine Albumentations 2.2.0 transforms applied to the same Sentinel-2 tile of Moorea (French Polynesia). Source tile: ESA / CNES, [Copernicus Sentinel-2 imagery, 21 June 2021](https://commons.wikimedia.org/wiki/File:Moorea_et_Tahiti_vues_par_Sentinel_2.jpg), CC BY-SA 3.0 IGO. Grid produced by [build_hero.py](images/build_hero.py).*
+*Hero image: 3×3 grid on the same Sentinel-2 tile — [`NoOp`](https://explore.albumentations.ai/transform/NoOp), [`VerticalFlip`](https://explore.albumentations.ai/transform/VerticalFlip), [`Rotate`](https://explore.albumentations.ai/transform/Rotate), [`RandomBrightnessContrast`](https://explore.albumentations.ai/transform/RandomBrightnessContrast), [`HueSaturationValue`](https://explore.albumentations.ai/transform/HueSaturationValue), [`GaussNoise`](https://explore.albumentations.ai/transform/GaussNoise), [`ElasticTransform`](https://explore.albumentations.ai/transform/ElasticTransform), [`MotionBlur`](https://explore.albumentations.ai/transform/MotionBlur), [`CoarseDropout`](https://explore.albumentations.ai/transform/CoarseDropout). Source tile: ESA / CNES, [Copernicus Sentinel-2 imagery, 21 June 2021](https://commons.wikimedia.org/wiki/File:Moorea_et_Tahiti_vues_par_Sentinel_2.jpg), CC BY-SA 3.0 IGO. Grid: [build_hero.py](images/build_hero.py).*
