@@ -1,2 +1,19 @@
 .DS_Store
 _internal/
+
+# Blog images should be committed as WebP. Keep local/source exports out of git.
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tif
+*.tiff
+*.heic
+*.heif
+*.avif
+*.jp2
+*.JPG
+*.JPEG
+*.PNG
+*.GIF
